@@ -1,0 +1,10 @@
+{
+  "name": "Performa Cedera",
+  "description": "Analisis tendangan depan pencak silat (pra vs pasca kelelahan) dengan gaya kartun.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
