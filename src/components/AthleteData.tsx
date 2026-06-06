@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { User, Calendar, Ruler, Activity, Clock, Save, Plus, ChevronRight, UserPlus, CheckCircle } from 'lucide-react';
+import { User, Calendar, Ruler, Activity, Clock, Save, Plus, ChevronRight, UserPlus, CheckCircle2 } from 'lucide-react';
+import { collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
+import { db, OperationType, handleFirestoreError } from '../firebase';
 
 interface Athlete {
   id: string;
@@ -30,71 +32,88 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
     recoveryTime: ''
   });
   const [athletes, setAthletes] = useState<Athlete[]>([]);
-  const [showForm, setShowForm] = useState(!savedData || isAthleteMode);
+  const [showForm, setShowForm] = useState(!!isAthleteMode);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
-    fetch('/api/athletes')
-      .then(res => res.json())
-      .then(data => {
-        const athletesList = Array.isArray(data) ? data : [];
-        setAthletes(athletesList);
+    let active = true;
+    
+    const loadAthletes = async () => {
+      const athletesPath = "athletes";
+      try {
+        const athletesSnap = await getDocs(collection(db, "athletes"));
+        const athletesList = athletesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any);
         
-        if (isAthleteMode && athleteId) {
-          const currentAthlete = athletesList.find((a: Athlete) => a.id === athleteId);
-          if (currentAthlete) {
-            setFormData({
-              id: currentAthlete.id,
-              name: currentAthlete.name,
-              age: currentAthlete.age.toString(),
-              gender: currentAthlete.gender,
-              injuryType: currentAthlete.injury_type || '',
-              bodyPart: currentAthlete.body_part || '',
-              recoveryTime: currentAthlete.recovery_time?.toString() || ''
-            });
-            setShowForm(true);
+        // Sort descending by created_at in memory
+        athletesList.sort((a: any, b: any) => {
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        });
+
+        if (active) {
+          setAthletes(athletesList);
+          
+          if (isAthleteMode && athleteId) {
+            const currentAthlete = athletesList.find((a: Athlete) => a.id === athleteId);
+            if (currentAthlete) {
+              setFormData({
+                id: currentAthlete.id,
+                name: currentAthlete.name,
+                age: currentAthlete.age.toString(),
+                gender: currentAthlete.gender,
+                injuryType: currentAthlete.injury_type || '',
+                bodyPart: currentAthlete.body_part || '',
+                recoveryTime: currentAthlete.recovery_time?.toString() || ''
+              });
+              setShowForm(true);
+            }
           }
         }
-      })
-      .catch(err => console.error("Error loaded athletes:", err));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.LIST, athletesPath);
+      }
+    };
+
+    loadAthletes();
+    return () => {
+      active = false;
+    };
   }, [isAthleteMode, athleteId]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name) return alert("Mohon masukkan nama atlet");
 
-    // Save to server
-    fetch('/api/athletes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const athleteDocPath = `athletes/${formData.id}`;
+    try {
+      const docRef = doc(db, "athletes", formData.id);
+      await setDoc(docRef, {
         id: formData.id,
         name: formData.name,
         age: parseInt(formData.age) || 0,
         gender: formData.gender,
         injury_type: formData.injuryType,
         body_part: formData.bodyPart,
-        recovery_time: parseInt(formData.recoveryTime) || 0
-      }),
-    })
-    .then(res => res.json())
-    .then(() => {
+        recovery_time: parseInt(formData.recoveryTime) || 0,
+        created_at: new Date().toISOString()
+      }, { merge: true });
+
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
       onNext(formData);
-    })
-    .catch(err => console.error("Error saving profile:", err));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, athleteDocPath);
+    }
   };
 
   const selectAthlete = (a: Athlete) => {
     const data = {
       id: a.id,
-      name: a.name,
-      age: a.age.toString(),
-      gender: a.gender,
-      injuryType: a.injury_type,
-      bodyPart: a.body_part,
-      recoveryTime: a.recovery_time.toString()
+      name: a.name || '',
+      age: (a.age ?? '').toString(),
+      gender: a.gender || 'Laki-laki',
+      injuryType: a.injury_type || '',
+      bodyPart: a.body_part || '',
+      recoveryTime: (a.recovery_time ?? '').toString()
     };
     setFormData(data);
     onNext(data);
@@ -129,7 +148,7 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
                 recoveryTime: ''
               });
             }}
-            className="gold-button !py-4 !px-8"
+            className="gold-button !py-4 !px-8 cursor-pointer"
           >
             <UserPlus className="w-5 h-5" /> TAMBAH BARU
           </button>
@@ -153,7 +172,7 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
                   <div className="space-y-2">
                     <label className="section-label">Jenis Kelamin</label>
                     <select 
-                      className="form-input"
+                      className="form-input animate-fade-in"
                       value={formData.gender}
                       onChange={(e) => setFormData({...formData, gender: e.target.value})}
                     >
@@ -180,7 +199,7 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
                       animate={{ opacity: 1, x: 0 }}
                       className="flex items-center gap-2 text-grass font-display font-bold text-xs uppercase tracking-wider"
                     >
-                      <CheckCircle className="w-5 h-5 text-grass" /> Profil Berhasil Diperbarui!
+                      <CheckCircle2 className="w-5 h-5 text-grass animate-bounce" /> Profil Berhasil Diperbarui!
                     </motion.div>
                   )}
                 </div>
@@ -188,7 +207,7 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
                 <button 
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="secondary-button"
+                  className="secondary-button cursor-pointer"
                 >
                   BATAL
                 </button>
@@ -196,7 +215,7 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
               
               <button 
                 type="submit"
-                className="action-button !px-12 ml-auto"
+                className="action-button !px-12 ml-auto cursor-pointer"
               >
                 <Save className="w-5 h-5" /> 
                 {isAthleteMode ? "SIMPAN PERUBAHAN PROFIL" : "SIMPAN & LANJUTKAN"}

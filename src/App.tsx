@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LayoutDashboard, User, Upload, Activity, History as HistoryIcon, FileText, Maximize, Minimize, LogOut, Shield } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db, auth, OperationType, handleFirestoreError } from './firebase';
 
 import { Dashboard } from './components/Dashboard';
 import { AthleteData } from './components/AthleteData';
@@ -20,8 +22,9 @@ interface UserRole {
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [athleteData, setAthleteData] = useState<any>(null);
-  const [testResults, setTestResults] = useState<{ testId: number, kicks: any[] } | null>(null);
+  const [testResults, setTestResults] = useState<{ testId: string, kicks: any[] } | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   // Load user role from session
   const [user, setUser] = useState<UserRole | null>(() => {
@@ -38,7 +41,26 @@ export default function App() {
       setIsFullscreen(!!document.fullscreenElement);
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+
+    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+      if (firebaseUser) {
+        // Keeps local state updated if auth matches
+        const stored = localStorage.getItem('silatmetrics_auth');
+        if (stored) {
+          setUser(JSON.parse(stored));
+        }
+      } else {
+        // User logged out from firebase, clear local Role state to stay in sync
+        setUser(null);
+        localStorage.removeItem('silatmetrics_auth');
+      }
+      setIsAuthLoading(false);
+    });
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      unsubscribe();
+    };
   }, []);
 
   const toggleFullscreen = () => {
@@ -53,6 +75,26 @@ export default function App() {
     }
   };
 
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white relative overflow-hidden">
+        <div className="absolute inset-0 cyber-grid opacity-[0.03]"></div>
+        <div className="text-center space-y-6 relative z-10">
+          <div className="w-16 h-16 bg-gradient-to-br from-upi-red to-red-800 rounded-2xl flex items-center justify-center shadow-lg mx-auto border border-white/20 animate-pulse">
+            <Activity className="w-8 h-8 text-upi-gold" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-display font-black tracking-tight text-slate-900 uppercase">
+              SILATMETRICS
+            </h2>
+            <p className="text-xs text-slate-400 uppercase tracking-widest mt-1 font-bold">Menyiapkan Sistem Performa...</p>
+          </div>
+          <div className="w-8 h-8 border-4 border-upi-red border-t-transparent rounded-full animate-spin mx-auto mt-4"></div>
+        </div>
+      </div>
+    );
+  }
+
   const handleAthleteNext = (data: any) => {
     setAthleteData(data);
     if (user?.role === 'atlet') {
@@ -62,30 +104,38 @@ export default function App() {
     }
   };
 
-  const handleAssessmentComplete = (testId: number, kicks: any[]) => {
+  const handleAssessmentComplete = (testId: string, kicks: any[]) => {
     setTestResults({ testId, kicks });
     setCurrentPage('report');
   };
 
-  const handleViewReport = async (testId: number) => {
+  const handleViewReport = async (testId: string) => {
+    const singleTestPath = `tests/${testId}`;
     try {
-      const res = await fetch(`/api/test/${testId}`);
-      const data = await res.json();
-      if (data.test && data.kicks) {
+      const testSnap = await getDoc(doc(db, "tests", testId));
+      if (testSnap.exists()) {
+        const testData = testSnap.data() as any;
+        const athleteSnap = await getDoc(doc(db, "athletes", String(testData.athlete_id)));
+        const athlete = athleteSnap.exists() ? athleteSnap.data() : {};
+
         setAthleteData({
-          id: data.test.id,
-          name: data.test.name,
-          age: data.test.age,
-          gender: data.test.gender,
-          injuryType: data.test.injury_type,
-          bodyPart: data.test.body_part,
-          recoveryTime: data.test.recovery_time
+          id: testData.athlete_id,
+          name: athlete.name || "Unknown",
+          age: athlete.age || 0,
+          gender: athlete.gender || "Laki-laki",
+          injuryType: athlete.injury_type || "",
+          bodyPart: athlete.body_part || "",
+          recoveryTime: athlete.recovery_time || 0
         });
-        setTestResults({ testId, kicks: data.kicks });
+
+        setTestResults({ testId, kicks: testData.kicks || [] });
         setCurrentPage('report');
+      } else {
+        console.error("Sesi tes tidak ditemukan di Firestore");
       }
     } catch (err) {
       console.error("Error viewing report:", err);
+      handleFirestoreError(err, OperationType.GET, singleTestPath);
     }
   };
 

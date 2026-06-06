@@ -3,9 +3,11 @@ import { format } from 'date-fns';
 import { motion } from 'motion/react';
 import { User, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { collection, getDocs } from 'firebase/firestore';
+import { db, OperationType, handleFirestoreError } from '../firebase';
 
 interface AthleteHistoryProps {
-  onViewReport?: (testId: number) => void;
+  onViewReport?: (testId: string) => void;
 }
 
 export const AthleteHistory: React.FC<AthleteHistoryProps> = ({ onViewReport }) => {
@@ -13,17 +15,53 @@ export const AthleteHistory: React.FC<AthleteHistoryProps> = ({ onViewReport }) 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/history')
-      .then(res => res.json())
-      .then(data => {
-        setHistory(Array.isArray(data) ? data : []);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to fetch history:", err);
-        setHistory([]);
-        setLoading(false);
-      });
+    let active = true;
+    const historyDocPath = "tests";
+    
+    const getHistory = async () => {
+      try {
+        const athletesSnap = await getDocs(collection(db, "athletes"));
+        const athletesMap = new Map();
+        athletesSnap.docs.forEach(doc => {
+          const data = doc.data();
+          athletesMap.set(data.id, data);
+        });
+
+        const testsSnap = await getDocs(collection(db, "tests"));
+        const tests = testsSnap.docs.map(doc => {
+          const t = doc.data() as any;
+          const ath = athletesMap.get(t.athlete_id) || {};
+          return {
+            ...t,
+            id: doc.id,
+            athlete_name: ath.name || "Unknown",
+            injury_type: ath.injury_type || "",
+            body_part: ath.body_part || ""
+          } as any;
+        });
+
+        tests.sort((a, b) => {
+          return new Date(b.test_date || 0).getTime() - new Date(a.test_date || 0).getTime();
+        });
+
+        if (active) {
+          setHistory(tests);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Failed compiling history: ", err);
+        if (active) {
+          handleFirestoreError(err, OperationType.LIST, historyDocPath);
+          setHistory([]);
+          setLoading(false);
+        }
+      }
+    };
+
+    getHistory();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const exportToExcel = (e: React.MouseEvent) => {
@@ -45,7 +83,7 @@ export const AthleteHistory: React.FC<AthleteHistoryProps> = ({ onViewReport }) 
     XLSX.writeFile(wb, `SILATMETRICS_History_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
   };
 
-  if (loading) return <div className="p-20 text-center">Memuat riwayat...</div>;
+  if (loading) return <div className="p-20 text-center text-sm font-bold text-slate-500 uppercase tracking-widest animate-pulse">Memuat riwayat...</div>;
 
   return (
     <div className="space-y-12">
@@ -61,7 +99,7 @@ export const AthleteHistory: React.FC<AthleteHistoryProps> = ({ onViewReport }) 
         </div>
         <button 
           onClick={exportToExcel}
-          className="gold-button !py-4 !px-10"
+          className="gold-button !py-4 !px-10 cursor-pointer"
         >
           <Download className="w-5 h-5" /> EXPORT EXCEL
         </button>
@@ -119,3 +157,4 @@ export const AthleteHistory: React.FC<AthleteHistoryProps> = ({ onViewReport }) 
     </div>
   );
 };
+export { XLSX };

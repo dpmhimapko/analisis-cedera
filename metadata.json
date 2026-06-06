@@ -1,6 +1,6 @@
 {
   "name": "Performa Cedera",
-  "description": "Analisis tendangan depan pencak silat (pra vs pasca kelelahan) dengan gaya kartun.",
+  "description": "Aplikasi analisis biomekanika tendangan depan pencak silat pasca cedera, terintegrasi dengan Google Auth dan real-time Firestore.",
   "requestFramePermissions": [
     "camera"
   ],

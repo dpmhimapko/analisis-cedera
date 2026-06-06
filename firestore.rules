@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // athletes collection
+    match /athletes/{athleteId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // tests collection
+    match /tests/{testId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

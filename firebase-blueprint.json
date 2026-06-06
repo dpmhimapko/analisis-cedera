@@ -1,0 +1,47 @@
+{
+  "entities": {
+    "athlete": {
+      "title": "Athlete",
+      "description": "Athlete profile information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "age": { "type": "integer" },
+        "gender": { "type": "string" },
+        "injury_type": { "type": "string" },
+        "body_part": { "type": "string" },
+        "recovery_time": { "type": "integer" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "test": {
+      "title": "Test",
+      "description": "Biomechanics assessment and kicks data",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "athlete_id": { "type": "string" },
+        "test_date": { "type": "string" },
+        "avg_accuracy": { "type": "number" },
+        "avg_speed": { "type": "number" },
+        "performance_category": { "type": "string" },
+        "kicks": {
+          "type": "array"
+        }
+      },
+      "required": ["id", "athlete_id"]
+    }
+  },
+  "firestore": {
+    "/athletes/{athleteId}": {
+      "schema": "athlete",
+      "description": "Information about athletes."
+    },
+    "/tests/{testId}": {
+      "schema": "test",
+      "description": "Completed biomechanics test sessions."
+    }
+  }
+}

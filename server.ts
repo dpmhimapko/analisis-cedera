@@ -1,93 +1,113 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
-import Database from "better-sqlite3";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, setDoc, getDoc, getDocs, collection } from "firebase/firestore";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const db = new Database("silatkick.db");
 
-// Initialize Database
+// Read configuration from firebase-applet-config.json safely
+let firebaseConfig: any;
 try {
-  // Check if sessions table has the new columns
-  const tableInfo = db.prepare("PRAGMA table_info(sessions)").all() as any[];
-  const hasNewColumn = tableInfo.some(col => col.name === 'knee_kuda');
-  
-  if (tableInfo.length > 0 && !hasNewColumn) {
-    console.log("Old schema detected, dropping tables...");
-    db.exec("DROP TABLE IF EXISTS time_series");
-    db.exec("DROP TABLE IF EXISTS sessions");
-    db.exec("DROP TABLE IF EXISTS athletes");
-  }
-} catch (e) {
-  console.error("Error checking schema:", e);
+  const firebaseConfigPath = path.join(__dirname, "firebase-applet-config.json");
+  const configText = fs.readFileSync(firebaseConfigPath, "utf8");
+  firebaseConfig = JSON.parse(configText);
+  console.log("Firebase config loaded successfully for project:", firebaseConfig.projectId);
+} catch (err) {
+  console.error("Critical: Gagal membaca firebase-applet-config.json", err);
+  process.exit(1);
 }
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS athletes (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    age INTEGER,
-    gender TEXT,
-    injury_type TEXT,
-    body_part TEXT,
-    recovery_time INTEGER,
-    created_at TEXT
-  );
+// Initialize Firebase JS SDK Server-side
+const firebaseApp = initializeApp(firebaseConfig);
+const firestoreDb = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
 
-  CREATE TABLE IF NOT EXISTS tests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    athlete_id TEXT,
-    test_date TEXT,
-    avg_accuracy REAL,
-    avg_speed REAL,
-    performance_category TEXT,
-    FOREIGN KEY(athlete_id) REFERENCES athletes(id)
-  );
+// Seed Data helper for Firestore
+async function seedFirestore() {
+  try {
+    const athletesSnap = await getDocs(collection(firestoreDb, "athletes"));
+    if (athletesSnap.empty) {
+      console.log("Firestore collection 'athletes' is empty. Seeding default data...");
+      
+      const asepId = "ATLET-ASEP";
+      const sitiId = "ATLET-SITI";
 
-  CREATE TABLE IF NOT EXISTS kicks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    test_id INTEGER,
-    kick_number INTEGER,
-    accuracy_points INTEGER,
-    start_time REAL,
-    contact_time REAL,
-    duration REAL,
-    angle TEXT,
-    FOREIGN KEY(test_id) REFERENCES tests(id)
-  );
-`);
+      await setDoc(doc(firestoreDb, "athletes", asepId), {
+        id: asepId,
+        name: "Asep Sunandar",
+        age: 24,
+        gender: "Laki-laki",
+        injury_type: "ACL",
+        body_part: "Lutut Kanan",
+        recovery_time: 12,
+        created_at: new Date().toISOString()
+      });
 
-// Seed Data if empty
-const athleteCount = (db.prepare("SELECT COUNT(*) as count FROM athletes").get() as any).count;
-if (athleteCount === 0) {
-  const insertAthlete = db.prepare(`
-    INSERT INTO athletes (id, name, age, gender, injury_type, body_part, recovery_time, created_at) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  
-  insertAthlete.run("ATLET-ASEP", "Asep Sunandar", 24, "Laki-laki", "ACL", "Lutut Kanan", 12, new Date().toISOString());
-  insertAthlete.run("ATLET-SITI", "Siti Aminah", 21, "Perempuan", "Meniscus", "Pergelangan Kaki", 8, new Date().toISOString());
+      await setDoc(doc(firestoreDb, "athletes", sitiId), {
+        id: sitiId,
+        name: "Siti Aminah",
+        age: 21,
+        gender: "Perempuan",
+        injury_type: "Meniscus",
+        body_part: "Pergelangan Kaki",
+        recovery_time: 8,
+        created_at: new Date().toISOString()
+      });
 
-  const insertTest = db.prepare(`
-    INSERT INTO tests (athlete_id, test_date, avg_accuracy, avg_speed, performance_category)
-    VALUES (?, ?, ?, ?, ?)
-  `);
+      // Sample kicks
+      const sampleKicksAsep = Array.from({ length: 10 }, (_, i) => ({
+        kick_number: i + 1,
+        accuracy_points: 80 + Math.floor(Math.random() * 20),
+        start_time: 0,
+        contact_time: 0.3,
+        duration: 0.3,
+        angle: "samping"
+      }));
 
-  const t1 = insertTest.run("ATLET-ASEP", new Date().toISOString(), 85.5, 5.2, "TINGGI");
-  const t2 = insertTest.run("ATLET-SITI", new Date().toISOString(), 62.0, 3.8, "SEDANG");
+      const sampleKicksSiti = Array.from({ length: 10 }, (_, i) => ({
+        kick_number: i + 1,
+        accuracy_points: 50 + Math.floor(Math.random() * 30),
+        start_time: 0,
+        contact_time: 0.4,
+        duration: 0.4,
+        angle: "samping"
+      }));
 
-  const insertKick = db.prepare(`
-    INSERT INTO kicks (test_id, kick_number, accuracy_points, start_time, contact_time, duration, angle)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
+      const testAsepId = "TEST-ASEP001";
+      await setDoc(doc(firestoreDb, "tests", testAsepId), {
+        id: testAsepId,
+        athlete_id: asepId,
+        test_date: new Date().toISOString(),
+        avg_accuracy: 85.5,
+        avg_speed: 5.2,
+        performance_category: "TINGGI",
+        kicks: sampleKicksAsep
+      });
 
-  for(let i=1; i<=10; i++) {
-      insertKick.run(t1.lastInsertRowid, i, 80 + Math.floor(Math.random()*20), 0, 0.3, 0.3, 'samping');
-      insertKick.run(t2.lastInsertRowid, i, 50 + Math.floor(Math.random()*30), 0, 0.4, 0.4, 'samping');
+      const testSitiId = "TEST-SITI001";
+      await setDoc(doc(firestoreDb, "tests", testSitiId), {
+        id: testSitiId,
+        athlete_id: sitiId,
+        test_date: new Date().toISOString(),
+        avg_accuracy: 62.0,
+        avg_speed: 3.8,
+        performance_category: "SEDANG",
+        kicks: sampleKicksSiti
+      });
+
+      console.log("Seeded 2 athletes and tests into Firestore successfully.");
+    } else {
+      console.log("Firestore database already has seeded profiles.");
+    }
+  } catch (error) {
+    console.error("Error seeding Firestore:", error);
   }
-  console.log("Seeded 2 athletes and tests.");
 }
+
+// Invoke seed asynchronously on launch
+seedFirestore();
 
 async function startServer() {
   const app = express();
@@ -96,133 +116,245 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
 
   // API Routes
-  app.post("/api/athletes", (req, res) => {
+
+  // 1. POST /api/athletes
+  app.post("/api/athletes", async (req, res) => {
     const { id, name, age, gender, injury_type, body_part, recovery_time } = req.body;
     try {
-      const stmt = db.prepare(`
-        INSERT INTO athletes (id, name, age, gender, injury_type, body_part, recovery_time, created_at) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET 
-          name = excluded.name,
-          age = excluded.age,
-          gender = excluded.gender,
-          injury_type = excluded.injury_type,
-          body_part = excluded.body_part,
-          recovery_time = excluded.recovery_time
-      `);
-      stmt.run(id, name, age, gender, injury_type, body_part, recovery_time, new Date().toISOString());
+      const athleteRef = doc(firestoreDb, "athletes", String(id));
+      await setDoc(athleteRef, {
+        id: String(id),
+        name: String(name || ""),
+        age: Number(age) || 0,
+        gender: String(gender || "Laki-laki"),
+        injury_type: String(injury_type || ""),
+        body_part: String(body_part || ""),
+        recovery_time: Number(recovery_time) || 0,
+        created_at: new Date().toISOString()
+      }, { merge: true });
+
       res.json({ success: true });
     } catch (err) {
+      console.error("Error inserting athlete:", err);
       res.status(500).json({ error: (err as Error).message });
     }
   });
 
-  app.get("/api/athletes", (req, res) => {
+  // 2. GET /api/athletes
+  app.get("/api/athletes", async (req, res) => {
     try {
-      const athletes = db.prepare("SELECT * FROM athletes ORDER BY created_at DESC").all();
+      const snapshot = await getDocs(collection(firestoreDb, "athletes"));
+      const athletes = snapshot.docs.map(doc => doc.data());
+      
+      // Sort desc by created_at in memory
+      athletes.sort((a: any, b: any) => {
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      });
+
       res.json(athletes);
     } catch (err) {
+      console.error("Error loading athletes:", err);
       res.status(500).json({ error: (err as Error).message });
     }
   });
 
-  app.post("/api/tests", (req, res) => {
+  // 3. POST /api/tests
+  app.post("/api/tests", async (req, res) => {
     const { athlete_id, avg_accuracy, avg_speed, performance_category, kicks } = req.body;
     try {
-      const insertTest = db.prepare(`
-        INSERT INTO tests (athlete_id, test_date, avg_accuracy, avg_speed, performance_category)
-        VALUES (?, ?, ?, ?, ?)
-      `);
-      const testResult = insertTest.run(athlete_id, new Date().toISOString(), avg_accuracy, avg_speed, performance_category);
-      const testId = testResult.lastInsertRowid;
+      // Generate unique test ID
+      const testId = `TEST-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+      const testRef = doc(firestoreDb, "tests", testId);
 
-      const insertKick = db.prepare(`
-        INSERT INTO kicks (test_id, kick_number, accuracy_points, start_time, contact_time, duration, angle)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      const transaction = db.transaction((kicksData) => {
-        for (const kick of kicksData) {
-          insertKick.run(testId, kick.kick_number, kick.accuracy_points, kick.start_time, kick.contact_time, kick.duration, kick.angle);
-        }
+      await setDoc(testRef, {
+        id: testId,
+        athlete_id: String(athlete_id || ""),
+        test_date: new Date().toISOString(),
+        avg_accuracy: Number(avg_accuracy) || 0,
+        avg_speed: Number(avg_speed) || 0,
+        performance_category: String(performance_category || "RENDAH"),
+        kicks: Array.isArray(kicks) ? kicks : []
       });
-      transaction(kicks);
 
       res.json({ success: true, testId });
     } catch (err) {
+      console.error("Error inserting test sessions:", err);
       res.status(500).json({ error: (err as Error).message });
     }
   });
 
-  app.get("/api/dashboard-stats", (req, res) => {
+  // 4. GET /api/dashboard-stats
+  app.get("/api/dashboard-stats", async (req, res) => {
     const { athlete_id } = req.query;
     try {
       if (athlete_id) {
         const idStr = String(athlete_id);
+
+        const athletesSnap = await getDoc(doc(firestoreDb, "athletes", idStr));
+        const athleteProfile = athletesSnap.exists() ? athletesSnap.data() : null;
+
+        const testsSnap = await getDocs(collection(firestoreDb, "tests"));
+        const allTests = testsSnap.docs.map(doc => doc.data() as any);
+        const athleteTests = allTests.filter(t => t.athlete_id === idStr);
+
+        const totalTests = athleteTests.length;
+        const totalAccuracySum = athleteTests.reduce((acc, t) => acc + (t.avg_accuracy || 0), 0);
+        const totalSpeedSum = athleteTests.reduce((acc, t) => acc + (t.avg_speed || 0), 0);
+
+        const avgAccuracy = totalTests > 0 ? (totalAccuracySum / totalTests) : 0;
+        const avgSpeed = totalTests > 0 ? (totalSpeedSum / totalTests) : 0;
+
+        // Grouping distribution
+        const distMap: Record<string, number> = {};
+        athleteTests.forEach(t => {
+          const cat = t.performance_category || "RENDAH";
+          distMap[cat] = (distMap[cat] || 0) + 1;
+        });
+
+        const performanceDist = Object.keys(distMap).map(key => ({
+          performance_category: key,
+          count: distMap[key]
+        }));
+
+        // Recent limit 10
+        const recentTests = athleteTests.map(t => ({
+          ...t,
+          athlete_name: athleteProfile ? athleteProfile.name : "Atlet"
+        }));
+        recentTests.sort((a, b) => new Date(b.test_date || 0).getTime() - new Date(a.test_date || 0).getTime());
+        const recentLimit = recentTests.slice(0, 10);
+
         const stats = {
           totalAthletes: 1,
-          totalTests: db.prepare("SELECT COUNT(*) as count FROM tests WHERE athlete_id = ?").get(idStr).count,
-          avgAccuracy: db.prepare("SELECT AVG(avg_accuracy) as avg FROM tests WHERE athlete_id = ?").get(idStr).avg || 0,
-          avgSpeed: db.prepare("SELECT AVG(avg_speed) as avg FROM tests WHERE athlete_id = ?").get(idStr).avg || 0,
-          performanceDist: db.prepare("SELECT performance_category, COUNT(*) as count FROM tests WHERE athlete_id = ? GROUP BY performance_category").all(idStr),
-          recentTests: db.prepare(`
-            SELECT t.*, a.name as athlete_name 
-            FROM tests t 
-            JOIN athletes a ON t.athlete_id = a.id 
-            WHERE t.athlete_id = ?
-            ORDER BY t.test_date DESC 
-            LIMIT 10
-          `).all(idStr),
-          athleteProfile: db.prepare("SELECT * FROM athletes WHERE id = ?").get(idStr)
+          totalTests,
+          avgAccuracy,
+          avgSpeed,
+          performanceDist,
+          recentTests: recentLimit,
+          athleteProfile
         };
+
         res.json(stats);
       } else {
+        // Global / Coach mode stats
+        const athletesSnap = await getDocs(collection(firestoreDb, "athletes"));
+        const allAthletes = athletesSnap.docs.map(doc => doc.data() as any);
+        const athletesMap = new Map();
+        allAthletes.forEach(ath => {
+          athletesMap.set(ath.id, ath);
+        });
+
+        const testsSnap = await getDocs(collection(firestoreDb, "tests"));
+        const allTests = testsSnap.docs.map(doc => doc.data() as any);
+
+        const totalAthletes = allAthletes.length;
+        const totalTests = allTests.length;
+
+        const totalAccuracySum = allTests.reduce((acc, t) => acc + (t.avg_accuracy || 0), 0);
+        const totalSpeedSum = allTests.reduce((acc, t) => acc + (t.avg_speed || 0), 0);
+
+        const avgAccuracy = totalTests > 0 ? (totalAccuracySum / totalTests) : 0;
+        const avgSpeed = totalTests > 0 ? (totalSpeedSum / totalTests) : 0;
+
+        // Grouping distribution
+        const distMap: Record<string, number> = {};
+        allTests.forEach(t => {
+          const cat = t.performance_category || "RENDAH";
+          distMap[cat] = (distMap[cat] || 0) + 1;
+        });
+
+        const performanceDist = Object.keys(distMap).map(key => ({
+          performance_category: key,
+          count: distMap[key]
+        }));
+
+        // Recent overall limit 5
+        const recentTests = allTests.map(t => {
+          const ath = athletesMap.get(t.athlete_id);
+          return {
+            ...t,
+            athlete_name: ath ? ath.name : "Unknown"
+          };
+        });
+        recentTests.sort((a, b) => new Date(b.test_date || 0).getTime() - new Date(a.test_date || 0).getTime());
+        const recentLimit = recentTests.slice(0, 5);
+
         const stats = {
-          totalAthletes: db.prepare("SELECT COUNT(*) as count FROM athletes").get().count,
-          totalTests: db.prepare("SELECT COUNT(*) as count FROM tests").get().count,
-          avgAccuracy: db.prepare("SELECT AVG(avg_accuracy) as avg FROM tests").get().avg || 0,
-          avgSpeed: db.prepare("SELECT AVG(avg_speed) as avg FROM tests").get().avg || 0,
-          performanceDist: db.prepare("SELECT performance_category, COUNT(*) as count FROM tests GROUP BY performance_category").all(),
-          recentTests: db.prepare(`
-            SELECT t.*, a.name as athlete_name 
-            FROM tests t 
-            JOIN athletes a ON t.athlete_id = a.id 
-            ORDER BY t.test_date DESC 
-            LIMIT 5
-          `).all()
+          totalAthletes,
+          totalTests,
+          avgAccuracy,
+          avgSpeed,
+          performanceDist,
+          recentTests: recentLimit
         };
+
         res.json(stats);
       }
     } catch (err) {
+      console.error("Dashboard Stats Error:", err);
       res.status(500).json({ error: (err as Error).message });
     }
   });
 
-  app.get("/api/history", (req, res) => {
+  // 5. GET /api/history
+  app.get("/api/history", async (req, res) => {
     try {
-      const rows = db.prepare(`
-        SELECT t.*, a.name as athlete_name, a.injury_type, a.body_part 
-        FROM tests t 
-        JOIN athletes a ON t.athlete_id = a.id 
-        ORDER BY t.test_date DESC
-      `).all();
-      res.json(rows);
+      const athletesSnap = await getDocs(collection(firestoreDb, "athletes"));
+      const athletesMap = new Map();
+      athletesSnap.docs.forEach(doc => {
+        const data = doc.data();
+        athletesMap.set(data.id, data);
+      });
+
+      const testsSnap = await getDocs(collection(firestoreDb, "tests"));
+      const tests = testsSnap.docs.map(doc => {
+        const t = doc.data() as any;
+        const ath = athletesMap.get(t.athlete_id) || {};
+        return {
+          ...t,
+          athlete_name: ath.name || "Unknown",
+          injury_type: ath.injury_type || "",
+          body_part: ath.body_part || ""
+        } as any;
+      });
+
+      tests.sort((a, b) => {
+        return new Date(b.test_date || 0).getTime() - new Date(a.test_date || 0).getTime();
+      });
+
+      res.json(tests);
     } catch (err) {
+      console.error("History loading error:", err);
       res.status(500).json({ error: (err as Error).message });
     }
   });
 
-  app.get("/api/test/:id", (req, res) => {
+  // 6. GET /api/test/:id
+  app.get("/api/test/:id", async (req, res) => {
     try {
-      const test = db.prepare(`
-        SELECT t.*, a.* 
-        FROM tests t 
-        JOIN athletes a ON t.athlete_id = a.id 
-        WHERE t.id = ?
-      `).get(req.params.id);
-      const kicks = db.prepare("SELECT * FROM kicks WHERE test_id = ? ORDER BY kick_number ASC").all(req.params.id);
-      res.json({ test, kicks });
+      const testId = String(req.params.id);
+      const testSnap = await getDoc(doc(firestoreDb, "tests", testId));
+      if (!testSnap.exists()) {
+        return res.status(404).json({ error: "Sesi tes tidak ditemukan." });
+      }
+
+      const testData = testSnap.data() as any;
+      const athleteSnap = await getDoc(doc(firestoreDb, "athletes", String(testData.athlete_id)));
+      const athlete = athleteSnap.exists() ? athleteSnap.data() : {};
+
+      // Combined test profile
+      const combinedTest = {
+        ...testData,
+        ...athlete,
+        id: testData.id // Maintain test id
+      };
+
+      res.json({
+        test: combinedTest,
+        kicks: testData.kicks || []
+      });
     } catch (err) {
+      console.error("Single test loading error:", err);
       res.status(500).json({ error: (err as Error).message });
     }
   });
@@ -247,3 +379,4 @@ async function startServer() {
 }
 
 startServer();
+
