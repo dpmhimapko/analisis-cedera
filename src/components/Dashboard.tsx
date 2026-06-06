@@ -29,38 +29,67 @@ interface DashboardProps {
   onViewReport?: (testId: string) => void;
 }
 
+// Safe helper to handle Firestore timeouts in sandbox and poor network conditions
+const withTimeout = <T,>(promise: Promise<T>, ms = 6000): Promise<T> => {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error("Timeout: Koneksi database lambat atau diblokir sandbox. Silakan muat ulang atau periksa koneksi Anda."));
+    }, ms);
+    promise
+      .then((res) => {
+        clearTimeout(timer);
+        resolve(res);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+};
+
 export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport }) => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [athletesList, setAthletesList] = useState<any[]>([]);
+  const [selectedAthleteId, setSelectedAthleteId] = useState<string>(athleteId || "all");
+
+  useEffect(() => {
+    if (athleteId) {
+      setSelectedAthleteId(athleteId);
+    }
+  }, [athleteId]);
 
   useEffect(() => {
     let active = true;
     setError(null);
+    setStats(null); // Clear previous stats to show loading spinner when choosing a different athlete
 
     const loadData = async () => {
       try {
-        if (athleteId) {
-          // --- Athlete Mode ---
-          const athleteDocRef = doc(db, "athletes", athleteId);
+        const activeAthleteId = athleteId || (selectedAthleteId !== "all" ? selectedAthleteId : undefined);
+
+        if (activeAthleteId) {
+          // --- Athlete Mode / Single Athlete Focus ---
+          const athleteDocRef = doc(db, "athletes", activeAthleteId);
           let athleteProfile: any = null;
           try {
-            const athSnap = await getDoc(athleteDocRef);
+            const athSnap = await withTimeout(getDoc(athleteDocRef));
             if (athSnap.exists()) {
               athleteProfile = athSnap.data();
             }
           } catch (err) {
-            handleFirestoreError(err, OperationType.GET, `athletes/${athleteId}`);
+            handleFirestoreError(err, OperationType.GET, `athletes/${activeAthleteId}`);
           }
 
           let allTests: any[] = [];
           try {
-            const testsSnap = await getDocs(collection(db, "tests"));
+            const testsSnap = await withTimeout(getDocs(collection(db, "tests")));
             allTests = testsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any);
           } catch (err) {
             handleFirestoreError(err, OperationType.LIST, "tests");
           }
 
-          const athleteTests = allTests.filter(t => t.athlete_id === athleteId);
+          const athleteTests = allTests.filter(t => t.athlete_id === activeAthleteId);
           const totalTests = athleteTests.length;
           const totalAccuracySum = athleteTests.reduce((acc, t) => acc + (t.avg_accuracy || 0), 0);
           const totalSpeedSum = athleteTests.reduce((acc, t) => acc + (t.avg_speed || 0), 0);
@@ -99,10 +128,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport })
             });
           }
         } else {
-          // --- Coach Mode ---
+          // --- Coach Mode (All Athletes) ---
           let allAthletes: any[] = [];
           try {
-            const athletesSnap = await getDocs(collection(db, "athletes"));
+            const athletesSnap = await withTimeout(getDocs(collection(db, "athletes")));
             allAthletes = athletesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any);
           } catch (err) {
             handleFirestoreError(err, OperationType.LIST, "athletes");
@@ -115,7 +144,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport })
 
           let allTests: any[] = [];
           try {
-            const testsSnap = await getDocs(collection(db, "tests"));
+            const testsSnap = await withTimeout(getDocs(collection(db, "tests")));
             allTests = testsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any);
           } catch (err) {
             handleFirestoreError(err, OperationType.LIST, "tests");
@@ -152,6 +181,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport })
           const recentLimit = recentTests.slice(0, 5);
 
           if (active) {
+            setAthletesList(allAthletes);
             setStats({
               totalAthletes,
               totalTests,
@@ -175,7 +205,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport })
     return () => {
       active = false;
     };
-  }, [athleteId]);
+  }, [athleteId, selectedAthleteId]);
 
   if (error) {
     return (
@@ -211,11 +241,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport })
     );
   }
 
-  const isAthlete = !!athleteId && stats.athleteProfile;
+  const isAthlete = (!!athleteId || selectedAthleteId !== "all") && !!stats.athleteProfile;
   const profile = stats.athleteProfile;
 
   return (
     <div className="space-y-10 pb-20">
+      {/* Coach Mode: Athlete Focus Selector */}
+      {!athleteId && (
+        <div className="bg-gradient-to-r from-slate-900 to-slate-800 border border-slate-800 p-6 rounded-3xl text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="space-y-1">
+            <h2 className="text-lg font-display font-black uppercase tracking-tight text-upi-gold">PULPEN FASILITAS MONITORING</h2>
+            <p className="text-xs text-slate-300">Pilih profil atlet untuk memantau detail medis dan performa analisis tendangan mereka secara terfokus.</p>
+          </div>
+          <div className="relative w-full md:w-80">
+            <select
+              className="w-full bg-slate-800/90 border border-slate-700 text-white text-sm font-bold px-4 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-upi-gold cursor-pointer transition-all"
+              value={selectedAthleteId}
+              onChange={(e) => setSelectedAthleteId(e.target.value)}
+            >
+              <option value="all">📊 Semua Atlet (Keseluruhan Club)</option>
+              {athletesList.map(a => (
+                <option key={a.id} value={a.id} className="text-slate-800 font-medium">
+                  👤 {a.name} ({a.id})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="premium-card p-10 flex flex-col md:flex-row items-center gap-10 bg-gradient-to-br from-upi-red to-red-900 border-none text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full translate-x-1/4 -translate-y-1/4 blur-3xl pointer-events-none"></div>
@@ -238,7 +292,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport })
           </h1>
           <p className="text-lg text-red-100 max-w-xl font-light">
             {isAthlete 
-              ? `Dashboard personal untuk memantau pemulihan biomekanika tendangan depan pencak silat pasca cedera ${profile?.injury_type} pada ${profile?.body_part}.`
+              ? `Dashboard personal untuk memantau pemulihan biomekanika tendangan depan pencak silat pasca cedera ${profile?.injury_type || '-'} pada ${profile?.body_part || '-'}.`
               : "Sistem analisis biomekanika tendangan depan pencak silat untuk monitoring akurasi dan kecepatan atlet secara presisi berbasis Artificial Intelligence."
             }
           </p>
@@ -298,7 +352,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport })
                  <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={stats.recentTests.slice().reverse()}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="test_date" tickFormatter={(val) => new Date(val).toLocaleDateString()} label={{ value: 'Tanggal', position: 'bottom', offset: 0 }} />
+                      <XAxis dataKey="test_date" tickFormatter={(val) => val ? new Date(val).toLocaleDateString() : 'N/A'} label={{ value: 'Tanggal', position: 'bottom', offset: 0 }} />
                       <YAxis domain={[0, 100]} />
                       <Tooltip 
                         contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
@@ -401,68 +455,76 @@ export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport })
         </div>
       </div>
 
-      {/* Recent Tests Table & Report Access for Athletes */}
-      {isAthlete && (
-        <div className="premium-card p-8">
-          <h3 className="text-2xl font-display font-black text-slate-900 uppercase mb-6 tracking-tight">
-            RIWAYAT HASIL TES ANDA
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-100">
-                  <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tanggal</th>
-                  <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Akurasi Rata-rata</th>
-                  <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Kecepatan Rata-rata</th>
-                  <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Kategori Performa</th>
-                  <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Laporan</th>
+      {/* Recent Tests Table & Report Access */}
+      <div className="premium-card p-8">
+        <h3 className="text-2xl font-display font-black text-slate-900 uppercase mb-6 tracking-tight">
+          {isAthlete ? "RIWAYAT HASIL TES ANDA" : "RIWAYAT HASIL TES TERBARU ATLET"}
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-100">
+                {!isAthlete && <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Atlet</th>}
+                <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tanggal</th>
+                <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Akurasi Rata-rata</th>
+                <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Kecepatan Rata-rata</th>
+                <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Kategori Performa</th>
+                <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Laporan</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {stats.recentTests.map((t) => (
+                <tr key={t.id} className="hover:bg-slate-50/50 transition-colors group">
+                  {!isAthlete && (
+                    <td className="py-4 text-sm font-black text-slate-900">
+                      {t.athlete_name || "Unknown"}
+                    </td>
+                  )}
+                  <td className="py-4 text-sm font-black text-slate-700">
+                    {t.test_date ? (
+                      <>
+                        {new Date(t.test_date).toLocaleDateString()} • {new Date(t.test_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </>
+                    ) : "-"}
+                  </td>
+                  <td className="py-4 font-display font-black text-slate-900 text-lg">
+                    {t.avg_accuracy.toFixed(1)}%
+                  </td>
+                  <td className="py-4 font-display font-medium text-slate-600">
+                    {t.avg_speed.toFixed(2)} m/s
+                  </td>
+                  <td className="py-4">
+                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                      t.performance_category === 'TINGGI' ? 'bg-grass/10 text-grass' : t.performance_category === 'SEDANG' ? 'bg-upi-gold/10 text-upi-red' : 'bg-upi-red/10 text-upi-red'
+                    }`}>
+                      {t.performance_category}
+                    </span>
+                  </td>
+                  <td className="py-4 text-right">
+                    {onViewReport ? (
+                      <button
+                        onClick={() => onViewReport(t.id)}
+                        className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-bold tracking-widest uppercase hover:bg-upi-red transition-all flex items-center gap-1 ml-auto cursor-pointer"
+                      >
+                        LIHAT <ChevronRight className="w-3 h-3" />
+                      </button>
+                    ) : (
+                      <span className="text-xs text-slate-400">-</span>
+                    )}
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {stats.recentTests.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="py-4 text-sm font-black text-slate-700">
-                      {new Date(t.test_date).toLocaleDateString()} • {new Date(t.test_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </td>
-                    <td className="py-4 font-display font-black text-slate-900 text-lg">
-                      {t.avg_accuracy.toFixed(1)}%
-                    </td>
-                    <td className="py-4 font-display font-medium text-slate-600">
-                      {t.avg_speed.toFixed(2)} m/s
-                    </td>
-                    <td className="py-4">
-                      <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                        t.performance_category === 'TINGGI' ? 'bg-grass/10 text-grass' : t.performance_category === 'SEDANG' ? 'bg-upi-gold/10 text-upi-red' : 'bg-upi-red/10 text-upi-red'
-                      }`}>
-                        {t.performance_category}
-                      </span>
-                    </td>
-                    <td className="py-4 text-right">
-                      {onViewReport ? (
-                        <button
-                          onClick={() => onViewReport(t.id)}
-                          className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-bold tracking-widest uppercase hover:bg-upi-red transition-all flex items-center gap-1 ml-auto cursor-pointer"
-                        >
-                          LIHAT <ChevronRight className="w-3 h-3" />
-                        </button>
-                      ) : (
-                        <span className="text-xs text-slate-400">-</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {stats.recentTests.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="py-10 text-center text-slate-400 font-medium bg-slate-50/30 rounded-xl">
-                      Belum ada sesi analisis biomekanika tendangan yang direkam.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+              ))}
+              {stats.recentTests.length === 0 && (
+                <tr>
+                  <td colSpan={isAthlete ? 5 : 6} className="py-10 text-center text-slate-400 font-medium bg-slate-50/30 rounded-xl">
+                    Belum ada sesi analisis biomekanika tendangan yang direkam.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
     </div>
   );
 };

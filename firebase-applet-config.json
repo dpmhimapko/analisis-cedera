@@ -1,10 +1,10 @@
 {
-  "projectId": "effortless-academy-m8gvj",
-  "appId": "1:714943713891:web:b9e82deb64d29bab8b9e56",
-  "apiKey": "AIzaSyBlSkan8TCPhRNo7TMmLTnLO-gZzgYP4to",
-  "authDomain": "effortless-academy-m8gvj.firebaseapp.com",
+  "projectId": "gen-lang-client-0623308561",
+  "appId": "1:197413078829:web:930675ae4064fc525ff5a4",
+  "apiKey": "AIzaSyDVmmiE4o_nHyMeldDx3kfEp0-XKVdwyNc",
+  "authDomain": "gen-lang-client-0623308561.firebaseapp.com",
   "firestoreDatabaseId": "ai-studio-bad1b233-9e78-4279-a830-a4faaa77c09e",
-  "storageBucket": "effortless-academy-m8gvj.firebasestorage.app",
-  "messagingSenderId": "714943713891",
+  "storageBucket": "gen-lang-client-0623308561.firebasestorage.app",
+  "messagingSenderId": "197413078829",
   "measurementId": ""
 }

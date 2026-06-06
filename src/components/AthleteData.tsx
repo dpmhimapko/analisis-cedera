@@ -34,14 +34,150 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [showForm, setShowForm] = useState(!!isAthleteMode);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorStatus, setErrorStatus] = useState<string | null>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const handleSeedDemo = async () => {
+    setIsSeeding(true);
+    setErrorStatus(null);
+    try {
+      const bagasId = "ATLET-BAGAS";
+      
+      // 1. Seed Athlete
+      const athleteRef = doc(db, "athletes", bagasId);
+      await setDoc(athleteRef, {
+        id: bagasId,
+        name: "Bagas Prakoso",
+        age: 23,
+        gender: "Laki-laki",
+        injury_type: "Putus Tendon Achilles (Rupture)",
+        body_part: "Tungkai Kiri (Achilles Kiri)",
+        recovery_time: 16,
+        created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days ago
+      });
+
+      // Kicks Sesi 1
+      const kicksSesi1 = [
+        { kick_number: 1, accuracy_points: 42, start_time: 0, contact_time: 0.72, duration: 0.75, angle: "lurus" },
+        { kick_number: 2, accuracy_points: 45, start_time: 0.1, contact_time: 0.68, duration: 0.72, angle: "lurus" },
+        { kick_number: 3, accuracy_points: 38, start_time: 0, contact_time: 0.75, duration: 0.82, angle: "lurus" },
+        { kick_number: 4, accuracy_points: 52, start_time: 0.05, contact_time: 0.70, duration: 0.74, angle: "lurus" },
+        { kick_number: 5, accuracy_points: 40, start_time: 0, contact_time: 0.78, duration: 0.80, angle: "lurus" },
+        { kick_number: 6, accuracy_points: 48, start_time: 0.12, contact_time: 0.69, duration: 0.71, angle: "lurus" },
+        { kick_number: 7, accuracy_points: 35, start_time: 0, contact_time: 0.85, duration: 0.89, angle: "lurus" },
+        { kick_number: 8, accuracy_points: 47, start_time: 0.02, contact_time: 0.71, duration: 0.76, angle: "lurus" },
+        { kick_number: 9, accuracy_points: 58, start_time: 0.05, contact_time: 0.65, duration: 0.69, angle: "lurus" },
+        { kick_number: 10, accuracy_points: 47, start_time: 0, contact_time: 0.73, duration: 0.77, angle: "lurus" },
+      ];
+
+      // Kicks Sesi 2
+      const kicksSesi2 = [
+        { kick_number: 1, accuracy_points: 70, start_time: 0, contact_time: 0.48, duration: 0.51, angle: "lurus" },
+        { kick_number: 2, accuracy_points: 75, start_time: 0.05, contact_time: 0.44, duration: 0.48, angle: "lurus" },
+        { kick_number: 3, accuracy_points: 68, start_time: 0, contact_time: 0.50, duration: 0.53, angle: "lurus" },
+        { kick_number: 4, accuracy_points: 72, start_time: 0.02, contact_time: 0.46, duration: 0.49, angle: "lurus" },
+        { kick_number: 5, accuracy_points: 80, start_time: 0, contact_time: 0.42, duration: 0.45, angle: "lurus" },
+        { kick_number: 6, accuracy_points: 65, start_time: 0.08, contact_time: 0.52, duration: 0.55, angle: "lurus" },
+        { kick_number: 7, accuracy_points: 74, start_time: 0, contact_time: 0.45, duration: 0.48, angle: "lurus" },
+        { kick_number: 8, accuracy_points: 71, start_time: 0.01, contact_time: 0.47, duration: 0.50, angle: "lurus" },
+        { kick_number: 9, accuracy_points: 78, start_time: 0.04, contact_time: 0.43, duration: 0.46, angle: "lurus" },
+        { kick_number: 10, accuracy_points: 62, start_time: 0, contact_time: 0.55, duration: 0.58, angle: "lurus" },
+      ];
+
+      // Kicks Sesi 3
+      const kicksSesi3 = [
+        { kick_number: 1, accuracy_points: 92, start_time: 0, contact_time: 0.28, duration: 0.31, angle: "lurus" },
+        { kick_number: 2, accuracy_points: 95, start_time: 0.02, contact_time: 0.26, duration: 0.29, angle: "lurus" },
+        { kick_number: 3, accuracy_points: 89, start_time: 0, contact_time: 0.30, duration: 0.33, angle: "lurus" },
+        { kick_number: 4, accuracy_points: 94, start_time: 0.01, contact_time: 0.27, duration: 0.30, angle: "lurus" },
+        { kick_number: 5, accuracy_points: 96, start_time: 0, contact_time: 0.25, duration: 0.28, angle: "lurus" },
+        { kick_number: 6, accuracy_points: 91, start_time: 0.04, contact_time: 0.29, duration: 0.32, angle: "lurus" },
+        { kick_number: 7, accuracy_points: 93, start_time: 0, contact_time: 0.27, duration: 0.30, angle: "lurus" },
+        { kick_number: 8, accuracy_points: 90, start_time: 0.01, contact_time: 0.31, duration: 0.34, angle: "lurus" },
+        { kick_number: 9, accuracy_points: 95, start_time: 0.03, contact_time: 0.26, duration: 0.29, angle: "lurus" },
+        { kick_number: 10, accuracy_points: 89, start_time: 0, contact_time: 0.32, duration: 0.35, angle: "lurus" },
+      ];
+
+      // 2. Seed Test Sesi 1
+      const testBagas1Id = "TEST-BAGAS001";
+      await setDoc(doc(db, "tests", testBagas1Id), {
+        id: testBagas1Id,
+        athlete_id: bagasId,
+        test_date: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString(), // 21 days ago
+        avg_accuracy: 45.2,
+        avg_speed: 2.4,
+        performance_category: "RENDAH",
+        kicks: kicksSesi1
+      });
+
+      // 3. Seed Test Sesi 2
+      const testBagas2Id = "TEST-BAGAS002";
+      await setDoc(doc(db, "tests", testBagas2Id), {
+        id: testBagas2Id,
+        athlete_id: bagasId,
+        test_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
+        avg_accuracy: 71.5,
+        avg_speed: 3.8,
+        performance_category: "SEDANG",
+        kicks: kicksSesi2
+      });
+
+      // 4. Seed Test Sesi 3
+      const testBagas3Id = "TEST-BAGAS003";
+      await setDoc(doc(db, "tests", testBagas3Id), {
+        id: testBagas3Id,
+        athlete_id: bagasId,
+        test_date: new Date().toISOString(), // Now
+        avg_accuracy: 92.4,
+        avg_speed: 5.5,
+        performance_category: "TINGGI",
+        kicks: kicksSesi3
+      });
+      
+      const athletesSnap = await getDocs(collection(db, "athletes"));
+      const athletesList = athletesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any);
+      athletesList.sort((a: any, b: any) => {
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      });
+      setAthletes(athletesList);
+      
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err: any) {
+      console.error(err);
+      setErrorStatus(err.message || String(err));
+    } finally {
+      setIsSeeding(false);
+    }
+  };
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setErrorStatus(null);
     
+    const withTimeout = <T,>(promise: Promise<T>, ms = 6000): Promise<T> => {
+      return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          reject(new Error("Timeout load database. Mohon cek jaringan Anda atau muat ulang halaman."));
+        }, ms);
+        promise
+          .then((res) => {
+            clearTimeout(timer);
+            resolve(res);
+          })
+          .catch((err) => {
+            clearTimeout(timer);
+            reject(err);
+          });
+      });
+    };
+
     const loadAthletes = async () => {
       const athletesPath = "athletes";
       try {
-        const athletesSnap = await getDocs(collection(db, "athletes"));
+        const athletesSnap = await withTimeout(getDocs(collection(db, "athletes")));
         const athletesList = athletesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any);
         
         // Sort descending by created_at in memory
@@ -68,8 +204,15 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
             }
           }
         }
-      } catch (err) {
-        handleFirestoreError(err, OperationType.LIST, athletesPath);
+      } catch (err: any) {
+        console.error("Error loading athletes lists: ", err);
+        if (active) {
+          setErrorStatus(err.message || String(err));
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
@@ -135,23 +278,37 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
           </div>
         </div>
         {!showForm && !isAthleteMode && (
-          <button 
-            onClick={() => {
-              setShowForm(true);
-              setFormData({ 
-                id: `ATLET-${Math.random().toString(36).substr(2, 6).toUpperCase()}`, 
-                name: '',
-                age: '',
-                gender: 'Laki-laki',
-                injuryType: '',
-                bodyPart: '',
-                recoveryTime: ''
-              });
-            }}
-            className="gold-button !py-4 !px-8 cursor-pointer"
-          >
-            <UserPlus className="w-5 h-5" /> TAMBAH BARU
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleSeedDemo}
+              disabled={isSeeding}
+              className="bg-slate-900 border border-slate-800 text-slate-100 font-black py-4 px-6 rounded-2xl flex items-center gap-2 hover:bg-slate-850 disabled:opacity-50 transition-all text-xs tracking-wider uppercase cursor-pointer"
+            >
+              {isSeeding ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                "⚡"
+              )}
+              SUNTIK ATLET DEMO
+            </button>
+            <button 
+              onClick={() => {
+                setShowForm(true);
+                setFormData({ 
+                  id: `ATLET-${Math.random().toString(36).substr(2, 6).toUpperCase()}`, 
+                  name: '',
+                  age: '',
+                  gender: 'Laki-laki',
+                  injuryType: '',
+                  bodyPart: '',
+                  recoveryTime: ''
+                });
+              }}
+              className="gold-button !py-4 !px-8 cursor-pointer"
+            >
+              <UserPlus className="w-5 h-5" /> TAMBAH BARU
+            </button>
+          </div>
         )}
       </div>
 
@@ -225,31 +382,59 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
         </motion.div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {athletes.map((a, i) => (
-            <motion.div 
-              key={a.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.05 }}
-              onClick={() => selectAthlete(a)}
-              className="premium-card p-6 flex items-center justify-between group cursor-pointer hover:border-upi-red transition-all"
-            >
-              <div className="flex items-center gap-6">
-                <div className="w-16 h-16 bg-slate-50 flex items-center justify-center rounded-2xl group-hover:bg-upi-red/10 transition-colors">
-                  <User className="text-slate-400 group-hover:text-upi-red transition-colors" />
-                </div>
-                <div>
-                  <h4 className="text-xl font-display font-black text-slate-900 leading-tight">{a.name}</h4>
-                  <p className="text-xs text-slate-400 uppercase tracking-widest">{a.id} • {a.injury_type || "Tidak ada riwayat cedera"}</p>
-                </div>
-              </div>
-              <ChevronRight className="text-slate-200 group-hover:text-upi-red transition-colors" />
-            </motion.div>
-          ))}
-          {athletes.length === 0 && (
-            <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-200 rounded-3xl">
-              <p className="text-slate-400 font-medium">Belum ada data atlet. Silakan tambah data baru ☝️</p>
+          {loading ? (
+            <div className="col-span-full py-20 text-center">
+              <div className="w-10 h-10 border-4 border-upi-red border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-slate-400 font-bold uppercase tracking-widest text-xs animate-pulse">Memuat Daftar Atlet...</p>
             </div>
+          ) : errorStatus ? (
+            <div className="col-span-full py-20 text-center space-y-4">
+              <p className="text-red-500 font-bold uppercase text-xs">Gagal Memuat Data</p>
+              <p className="text-slate-400 text-sm">{errorStatus}</p>
+              <button onClick={() => window.location.reload()} className="action-button mx-auto">Coba Lagi</button>
+            </div>
+          ) : (
+            <>
+              {athletes.map((a, i) => (
+                <motion.div 
+                  key={a.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  onClick={() => selectAthlete(a)}
+                  className="premium-card p-6 flex items-center justify-between group cursor-pointer hover:border-upi-red transition-all"
+                >
+                  <div className="flex items-center gap-6">
+                    <div className="w-16 h-16 bg-slate-50 flex items-center justify-center rounded-2xl group-hover:bg-upi-red/10 transition-colors">
+                      <User className="text-slate-400 group-hover:text-upi-red transition-colors" />
+                    </div>
+                    <div>
+                      <h4 className="text-xl font-display font-black text-slate-900 leading-tight">{a.name}</h4>
+                      <p className="text-xs text-slate-400 uppercase tracking-widest">{a.id} • {a.injury_type || "Tidak ada riwayat cedera"}</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="text-slate-200 group-hover:text-upi-red transition-colors" />
+                </motion.div>
+              ))}
+              {athletes.length === 0 && (
+                <div className="col-span-full py-16 px-6 text-center border-2 border-dashed border-slate-200 rounded-3xl space-y-4">
+                  <p className="text-slate-500 font-display font-medium uppercase tracking-wider text-xs">Belum Ada Data Atlet di Database</p>
+                  <p className="text-slate-400 text-sm max-w-sm mx-auto leading-relaxed">Mulai secara instan dengan memasang profil demo lengkap biomekanika cedera & hasil tes secara otomatis.</p>
+                  <button
+                    onClick={handleSeedDemo}
+                    disabled={isSeeding || loading}
+                    className="mx-auto bg-gradient-to-r from-upi-red to-red-600 text-white font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 hover:opacity-95 text-xs tracking-widest uppercase cursor-pointer transition-all disabled:opacity-50"
+                  >
+                    {isSeeding ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      "🚀"
+                    )}
+                    PASANG PROFIL DEMO ATLET
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

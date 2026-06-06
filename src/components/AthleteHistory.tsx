@@ -18,16 +18,33 @@ export const AthleteHistory: React.FC<AthleteHistoryProps> = ({ onViewReport }) 
     let active = true;
     const historyDocPath = "tests";
     
+    const withTimeout = <T,>(promise: Promise<T>, ms = 6000): Promise<T> => {
+      return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          reject(new Error("Timeout load database."));
+        }, ms);
+        promise
+          .then((res) => {
+            clearTimeout(timer);
+            resolve(res);
+          })
+          .catch((err) => {
+            clearTimeout(timer);
+            reject(err);
+          });
+      });
+    };
+
     const getHistory = async () => {
       try {
-        const athletesSnap = await getDocs(collection(db, "athletes"));
+        const athletesSnap = await withTimeout(getDocs(collection(db, "athletes")));
         const athletesMap = new Map();
         athletesSnap.docs.forEach(doc => {
           const data = doc.data();
           athletesMap.set(data.id, data);
         });
 
-        const testsSnap = await getDocs(collection(db, "tests"));
+        const testsSnap = await withTimeout(getDocs(collection(db, "tests")));
         const tests = testsSnap.docs.map(doc => {
           const t = doc.data() as any;
           const ath = athletesMap.get(t.athlete_id) || {};
@@ -51,7 +68,6 @@ export const AthleteHistory: React.FC<AthleteHistoryProps> = ({ onViewReport }) 
       } catch (err) {
         console.error("Failed compiling history: ", err);
         if (active) {
-          handleFirestoreError(err, OperationType.LIST, historyDocPath);
           setHistory([]);
           setLoading(false);
         }
