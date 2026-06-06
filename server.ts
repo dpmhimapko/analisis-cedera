@@ -155,22 +155,44 @@ async function startServer() {
   });
 
   app.get("/api/dashboard-stats", (req, res) => {
+    const { athlete_id } = req.query;
     try {
-      const stats = {
-        totalAthletes: db.prepare("SELECT COUNT(*) as count FROM athletes").get().count,
-        totalTests: db.prepare("SELECT COUNT(*) as count FROM tests").get().count,
-        avgAccuracy: db.prepare("SELECT AVG(avg_accuracy) as avg FROM tests").get().avg || 0,
-        avgSpeed: db.prepare("SELECT AVG(avg_speed) as avg FROM tests").get().avg || 0,
-        performanceDist: db.prepare("SELECT performance_category, COUNT(*) as count FROM tests GROUP BY performance_category").all(),
-        recentTests: db.prepare(`
-          SELECT t.*, a.name as athlete_name 
-          FROM tests t 
-          JOIN athletes a ON t.athlete_id = a.id 
-          ORDER BY t.test_date DESC 
-          LIMIT 5
-        `).all()
-      };
-      res.json(stats);
+      if (athlete_id) {
+        const idStr = String(athlete_id);
+        const stats = {
+          totalAthletes: 1,
+          totalTests: db.prepare("SELECT COUNT(*) as count FROM tests WHERE athlete_id = ?").get(idStr).count,
+          avgAccuracy: db.prepare("SELECT AVG(avg_accuracy) as avg FROM tests WHERE athlete_id = ?").get(idStr).avg || 0,
+          avgSpeed: db.prepare("SELECT AVG(avg_speed) as avg FROM tests WHERE athlete_id = ?").get(idStr).avg || 0,
+          performanceDist: db.prepare("SELECT performance_category, COUNT(*) as count FROM tests WHERE athlete_id = ? GROUP BY performance_category").all(idStr),
+          recentTests: db.prepare(`
+            SELECT t.*, a.name as athlete_name 
+            FROM tests t 
+            JOIN athletes a ON t.athlete_id = a.id 
+            WHERE t.athlete_id = ?
+            ORDER BY t.test_date DESC 
+            LIMIT 10
+          `).all(idStr),
+          athleteProfile: db.prepare("SELECT * FROM athletes WHERE id = ?").get(idStr)
+        };
+        res.json(stats);
+      } else {
+        const stats = {
+          totalAthletes: db.prepare("SELECT COUNT(*) as count FROM athletes").get().count,
+          totalTests: db.prepare("SELECT COUNT(*) as count FROM tests").get().count,
+          avgAccuracy: db.prepare("SELECT AVG(avg_accuracy) as avg FROM tests").get().avg || 0,
+          avgSpeed: db.prepare("SELECT AVG(avg_speed) as avg FROM tests").get().avg || 0,
+          performanceDist: db.prepare("SELECT performance_category, COUNT(*) as count FROM tests GROUP BY performance_category").all(),
+          recentTests: db.prepare(`
+            SELECT t.*, a.name as athlete_name 
+            FROM tests t 
+            JOIN athletes a ON t.athlete_id = a.id 
+            ORDER BY t.test_date DESC 
+            LIMIT 5
+          `).all()
+        };
+        res.json(stats);
+      }
     } catch (err) {
       res.status(500).json({ error: (err as Error).message });
     }

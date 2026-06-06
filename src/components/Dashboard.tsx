@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { Users, FileText, Target, Zap, Activity, TrendingUp } from 'lucide-react';
+import { Users, FileText, Target, Zap, Activity, TrendingUp, Award, Calendar, Heart, Shield, ChevronRight, Clock } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { Mascot } from './Icons';
 
 interface DashboardStats {
   totalAthletes: number;
@@ -11,38 +10,70 @@ interface DashboardStats {
   avgSpeed: number;
   performanceDist: { performance_category: string; count: number }[];
   recentTests: any[];
+  athleteProfile?: {
+    id: string;
+    name: string;
+    age: number;
+    gender: string;
+    injury_type: string;
+    body_part: string;
+    recovery_time: number;
+    created_at: string;
+  };
 }
 
-export const Dashboard: React.FC = () => {
+interface DashboardProps {
+  athleteId?: string;
+  onViewReport?: (testId: number) => void;
+}
+
+export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport }) => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
 
   useEffect(() => {
-    fetch('/api/dashboard-stats')
+    const url = athleteId ? `/api/dashboard-stats?athlete_id=${athleteId}` : '/api/dashboard-stats';
+    fetch(url)
       .then(res => res.json())
       .then(data => setStats(data))
       .catch(err => console.error(err));
-  }, []);
+  }, [athleteId]);
 
-  if (!stats) return <div className="p-10 text-center">Loading dashboard...</div>;
+  if (!stats) return <div className="p-10 text-center text-slate-500 font-display">Memuat Dashboard...</div>;
+
+  const isAthlete = !!athleteId && stats.athleteProfile;
+  const profile = stats.athleteProfile;
 
   return (
     <div className="space-y-10 pb-20">
       {/* Hero Section */}
       <section className="premium-card p-10 flex flex-col md:flex-row items-center gap-10 bg-gradient-to-br from-upi-red to-red-900 border-none text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full translate-x-1/4 -translate-y-1/4 blur-3xl pointer-events-none"></div>
         <div className="relative z-10 flex-grow space-y-6">
           <div className="inline-block px-4 py-1.5 bg-upi-gold text-upi-red rounded-full text-[10px] font-black uppercase tracking-[0.2em]">
-            Biomechanics Analysis System
+            {isAthlete ? "Athlete Personal Monitoring Hub" : "Biomechanics Analysis System"}
           </div>
-          <h1 className="text-5xl md:text-6xl font-display font-black tracking-tight leading-none">
-            SELAMAT DATANG DI <br />
-            <span className="text-upi-gold uppercase">SILATMETRICS</span>
+          <h1 className="text-4xl md:text-6xl font-display font-black tracking-tight leading-none uppercase">
+            {isAthlete ? (
+              <>
+                SELAMAT DATANG, <br />
+                <span className="text-upi-gold text-wrap">{profile?.name}</span>
+              </>
+            ) : (
+              <>
+                SELAMAT DATANG DI <br />
+                <span className="text-upi-gold uppercase">SILATMETRICS</span>
+              </>
+            )}
           </h1>
           <p className="text-lg text-red-100 max-w-xl font-light">
-            Sistem analisis biomekanika tendangan depan pencak silat untuk monitoring akurasi dan kecepatan atlet secara presisi berbasis Artificial Intelligence.
+            {isAthlete 
+              ? `Dashboard personal untuk memantau pemulihan biomekanika tendangan depan pencak silat pasca cedera ${profile?.injury_type} pada ${profile?.body_part}.`
+              : "Sistem analisis biomekanika tendangan depan pencak silat untuk monitoring akurasi dan kecepatan atlet secara presisi berbasis Artificial Intelligence."
+            }
           </p>
         </div>
         <div className="relative z-10 hidden lg:block">
-          <div className="w-48 h-48 bg-white/10 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/20">
+          <div className="w-48 h-48 bg-white/10 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/20 shadow-2xl">
              <TrendingUp className="w-20 h-20 text-upi-gold" />
           </div>
         </div>
@@ -51,16 +82,16 @@ export const Dashboard: React.FC = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
-          icon={<Users className="w-6 h-6" />} 
-          label="Jumlah Atlet" 
-          value={stats.totalAthletes} 
-          sub="Atlet Terdaftar" 
+          icon={isAthlete ? <Activity className="w-6 h-6" /> : <Users className="w-6 h-6" />} 
+          label={isAthlete ? "Jumlah Sesi Latihan" : "Jumlah Atlet"} 
+          value={isAthlete ? stats.totalTests : stats.totalAthletes} 
+          sub={isAthlete ? "Total Sesi Analisis" : "Atlet Terdaftar"} 
         />
         <StatCard 
           icon={<FileText className="w-6 h-6" />} 
           label="Jumlah Data Tes" 
           value={stats.totalTests} 
-          sub="Total Sesi Analisis" 
+          sub="Total Sesi Terlaksana" 
         />
         <StatCard 
           icon={<Target className="w-6 h-6" />} 
@@ -73,65 +104,194 @@ export const Dashboard: React.FC = () => {
           icon={<Zap className="w-6 h-6" />} 
           label="Rata-rata Kecepatan" 
           value={`${stats.avgSpeed.toFixed(2)} m/s`} 
-          sub="Daya Ledak" 
+          sub="Daya Ledak Maksimal" 
           color="text-upi-gold"
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Progress Chart */}
-        <div className="lg:col-span-8 premium-card p-8">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-2xl font-display font-black text-slate-900 uppercase">Perkembangan Hasil</h3>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-upi-red"></div>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Akurasi (%)</span>
+        <div className="lg:col-span-8 premium-card p-8 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-2xl font-display font-black text-slate-900 uppercase tracking-tight">
+                {isAthlete ? "Grafik Perkembangan Anda" : "Perkembangan Hasil Keseluruhan"}
+              </h3>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-upi-red"></div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Akurasi (%)</span>
+              </div>
             </div>
-          </div>
-          <div className="h-[300px]">
-             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={stats.recentTests.slice().reverse()}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="test_date" tickFormatter={(val) => new Date(val).toLocaleDateString()} label={{ value: 'Tanggal', position: 'bottom', offset: 0 }} />
-                  <YAxis domain={[0, 100]} />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="avg_accuracy" 
-                    stroke="#990000" 
-                    strokeWidth={4} 
-                    dot={{ r: 6, fill: '#990000', strokeWidth: 2, stroke: '#fff' }}
-                    activeDot={{ r: 10 }}
-                  />
-                </LineChart>
-             </ResponsiveContainer>
+            {stats.recentTests.length > 0 ? (
+              <div className="h-[300px]">
+                 <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={stats.recentTests.slice().reverse()}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="test_date" tickFormatter={(val) => new Date(val).toLocaleDateString()} label={{ value: 'Tanggal', position: 'bottom', offset: 0 }} />
+                      <YAxis domain={[0, 100]} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="avg_accuracy" 
+                        stroke="#990000" 
+                        strokeWidth={4} 
+                        dot={{ r: 6, fill: '#990000', strokeWidth: 2, stroke: '#fff' }}
+                        activeDot={{ r: 10 }}
+                      />
+                    </LineChart>
+                 </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                <p className="text-slate-400 font-medium">Belum ada data tes untuk divisualisasikan.</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Category Dist */}
-        <div className="lg:col-span-4 premium-card p-8">
-          <h3 className="text-2xl font-display font-black text-slate-900 uppercase mb-8">Kategori Performa</h3>
-          <div className="space-y-6">
-            {stats.performanceDist.length > 0 ? stats.performanceDist.map((item, i) => (
-              <div key={i} className="space-y-2">
-                <div className="flex justify-between items-end">
-                  <span className="text-sm font-black text-slate-600 uppercase tracking-widest">{item.performance_category}</span>
-                  <span className="text-xl font-display font-black text-upi-red">{item.count}</span>
+        {/* Categories or Profile Detail */}
+        <div className="lg:col-span-4 space-y-8">
+          {isAthlete && profile ? (
+            <div className="premium-card p-8 bg-gradient-to-b from-white to-slate-50 border-slate-200 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4">
+                <Heart className="w-6 h-6 text-upi-red/20" />
+              </div>
+              <h3 className="text-2xl font-display font-black text-slate-900 uppercase mb-6 tracking-tight flex items-center gap-2">
+                <Shield className="w-5 h-5 text-upi-red" /> STATUS MEDIS
+              </h3>
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-upi-red/5 flex items-center justify-center text-upi-red text-sm font-bold">
+                    <Activity className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Jenis Cedera</p>
+                    <p className="text-base font-black text-slate-800 uppercase">{profile.injury_type || "-"}</p>
+                  </div>
                 </div>
-                <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
-                   <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(item.count / stats.totalTests) * 100}%` }}
-                    className="h-full bg-upi-red"
-                   />
+
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-upi-gold/10 flex items-center justify-center text-upi-red text-sm font-bold">
+                    <Award className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Bagian Tubuh</p>
+                    <p className="text-base font-black text-slate-800 uppercase">{profile.body_part || "-"}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 text-sm font-bold">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Target Pemulihan</p>
+                    <p className="text-base font-black text-slate-800 uppercase">{profile.recovery_time ? `${profile.recovery_time} Minggu` : "-"}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 text-sm font-bold">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Profil Dibuat</p>
+                    <p className="text-base font-bold text-slate-600">
+                      {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : "-"}
+                    </p>
+                  </div>
                 </div>
               </div>
-            )) : <p className="text-slate-400 text-center py-10">Belum ada data category</p>}
+            </div>
+          ) : null}
+
+          <div className="premium-card p-8">
+            <h3 className="text-2xl font-display font-black text-slate-900 uppercase mb-8 tracking-tight">Kategori Performa</h3>
+            <div className="space-y-6">
+              {stats.performanceDist.length > 0 ? stats.performanceDist.map((item, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="flex justify-between items-end">
+                    <span className="text-sm font-black text-slate-600 uppercase tracking-widest">{item.performance_category}</span>
+                    <span className="text-xl font-display font-black text-upi-red">{item.count}</span>
+                  </div>
+                  <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
+                     <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(item.count / (stats.totalTests || 1)) * 100}%` }}
+                      className="h-full bg-upi-red"
+                     />
+                  </div>
+                </div>
+              )) : <p className="text-slate-400 text-center py-10 font-medium">Belum ada statistik kategori</p>}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Recent Tests Table & Report Access for Athletes */}
+      {isAthlete && (
+        <div className="premium-card p-8">
+          <h3 className="text-2xl font-display font-black text-slate-900 uppercase mb-6 tracking-tight">
+            RIWAYAT HASIL TES ANDA
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tanggal</th>
+                  <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Akurasi Rata-rata</th>
+                  <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Kecepatan Rata-rata</th>
+                  <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Kategori Performa</th>
+                  <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Laporan</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {stats.recentTests.map((t, idx) => (
+                  <tr key={t.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="py-4 text-sm font-black text-slate-700">
+                      {new Date(t.test_date).toLocaleDateString()} • {new Date(t.test_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td className="py-4 font-display font-black text-slate-900 text-lg">
+                      {t.avg_accuracy.toFixed(1)}%
+                    </td>
+                    <td className="py-4 font-display font-medium text-slate-600">
+                      {t.avg_speed.toFixed(2)} m/s
+                    </td>
+                    <td className="py-4">
+                      <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                        t.performance_category === 'TINGGI' ? 'bg-grass/10 text-grass' : t.performance_category === 'SEDANG' ? 'bg-upi-gold/10 text-upi-red' : 'bg-upi-red/10 text-upi-red'
+                      }`}>
+                        {t.performance_category}
+                      </span>
+                    </td>
+                    <td className="py-4 text-right">
+                      {onViewReport ? (
+                        <button
+                          onClick={() => onViewReport(t.id)}
+                          className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-bold tracking-widest uppercase hover:bg-upi-red transition-all flex items-center gap-1 ml-auto"
+                        >
+                          LIHAT <ChevronRight className="w-3 h-3" />
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-400">-</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {stats.recentTests.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center text-slate-400 font-medium bg-slate-50/30 rounded-xl">
+                      Belum ada sesi analisis biomekanika tendangan yang direkam.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
