@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { Target, Zap, Clock, Activity, Printer, FileText, Shield, FileDown, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Target, Zap, Clock, Activity, Printer, FileText, Shield, FileDown, ArrowLeft, CheckCircle2, X, ExternalLink, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -22,18 +22,223 @@ interface StylesheetBackup {
   originalValue?: string;
 }
 
+const oklchToRgb = (l: number, c: number, h: number): [number, number, number] => {
+  const hRad = (h * Math.PI) / 180;
+  const a = c * Math.cos(hRad);
+  const b = c * Math.sin(hRad);
+  
+  const l_ = l + 0.3963377774 * a + 0.2158037573 * b;
+  const m_ = l - 0.1055613458 * a - 0.0638541728 * b;
+  const s_ = l - 0.0894841775 * a - 1.2914855480 * b;
+  
+  const l_3 = l_ * l_ * l_;
+  const m_3 = m_ * m_ * m_;
+  const s_3 = s_ * s_ * s_;
+  
+  let r = +4.0767416621 * l_3 - 3.3077115913 * m_3 + 0.2309699292 * s_3;
+  let g = -1.2684380046 * l_3 + 2.6097574011 * m_3 - 0.3413193965 * s_3;
+  let b_val = -0.0041960863 * l_3 - 0.7034186147 * m_3 + 1.7076147010 * s_3;
+  
+  const fn = (x: number) => {
+    return x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(Math.max(0, x), 1 / 2.4) - 0.055;
+  };
+  
+  r = Math.round(Math.max(0, Math.min(1, fn(r))) * 255);
+  g = Math.round(Math.max(0, Math.min(1, fn(g))) * 255);
+  b_val = Math.round(Math.max(0, Math.min(1, fn(b_val))) * 255);
+  
+  return [r, g, b_val];
+};
+
+const oklabToRgb = (l: number, a: number, b: number): [number, number, number] => {
+  const l_ = l + 0.3963377774 * a + 0.2158037573 * b;
+  const m_ = l - 0.1055613458 * a - 0.0638541728 * b;
+  const s_ = l - 0.0894841775 * a - 1.2914855480 * b;
+  
+  const l_3 = l_ * l_ * l_;
+  const m_3 = m_ * m_ * m_;
+  const s_3 = s_ * s_ * s_;
+  
+  let r = +4.0767416621 * l_3 - 3.3077115913 * m_3 + 0.2309699292 * s_3;
+  let g = -1.2684380046 * l_3 + 2.6097574011 * m_3 - 0.3413193965 * s_3;
+  let b_val = -0.0041960863 * l_3 - 0.7034186147 * m_3 + 1.7076147010 * s_3;
+  
+  const fn = (x: number) => {
+    return x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(Math.max(0, x), 1 / 2.4) - 0.055;
+  };
+  
+  r = Math.round(Math.max(0, Math.min(1, fn(r))) * 255);
+  g = Math.round(Math.max(0, Math.min(1, fn(g))) * 255);
+  b_val = Math.round(Math.max(0, Math.min(1, fn(b_val))) * 255);
+  
+  return [r, g, b_val];
+};
+
+const convertOklchStringToRgb = (oklchStr: string): string => {
+  try {
+    const match = oklchStr.match(/oklch\(([^)]+)\)/i);
+    if (!match) return oklchStr;
+    const content = match[1];
+    const parts = content.trim().split(/[\s/]+/);
+    if (parts.length < 3) return oklchStr;
+    
+    let l = parseFloat(parts[0]);
+    if (parts[0].endsWith('%')) l /= 100;
+    
+    let c = parseFloat(parts[1]);
+    if (parts[1].endsWith('%')) c /= 100;
+    
+    let hStr = parts[2];
+    let h = parseFloat(hStr);
+    if (hStr.endsWith('deg')) h = parseFloat(hStr);
+    else if (hStr.endsWith('rad')) h = (parseFloat(hStr) * 180) / Math.PI;
+    else if (hStr.endsWith('turn')) h = parseFloat(hStr) * 360;
+    
+    let alpha = 1;
+    if (parts.length >= 4) {
+      let aStr = parts[3];
+      alpha = parseFloat(aStr);
+      if (aStr.endsWith('%')) alpha /= 100;
+    }
+    
+    if (isNaN(l) || isNaN(c) || isNaN(h)) return oklchStr;
+    
+    const [r, g, b] = oklchToRgb(l, c, h);
+    return alpha === 1 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  } catch (e) {
+    return oklchStr;
+  }
+};
+
+const convertOklabStringToRgb = (oklabStr: string): string => {
+  try {
+    const match = oklabStr.match(/oklab\(([^)]+)\)/i);
+    if (!match) return oklabStr;
+    const content = match[1];
+    const parts = content.trim().split(/[\s/]+/);
+    if (parts.length < 3) return oklabStr;
+    
+    let l = parseFloat(parts[0]);
+    if (parts[0].endsWith('%')) l /= 100;
+    
+    let a = parseFloat(parts[1]);
+    let bVal = parseFloat(parts[2]);
+    
+    let alpha = 1;
+    if (parts.length >= 4) {
+      let aStr = parts[3];
+      alpha = parseFloat(aStr);
+      if (aStr.endsWith('%')) alpha /= 100;
+    }
+    
+    if (isNaN(l) || isNaN(a) || isNaN(bVal)) return oklabStr;
+    
+    const [r, g, b] = oklabToRgb(l, a, bVal);
+    return alpha === 1 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  } catch (e) {
+    return oklabStr;
+  }
+};
+
+const convertColorToRgbaWithAlpha = (colorStr: string, alpha: number): string => {
+  if (colorStr.startsWith('rgb(')) {
+    const match = colorStr.match(/rgb\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)\s*\)/i);
+    if (match) {
+      return `rgba(${match[1]}, ${match[2]}, ${match[3]}, ${alpha})`;
+    }
+  }
+  if (colorStr.startsWith('rgba(')) {
+    const match = colorStr.match(/rgba\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)\s*\)/i);
+    if (match) {
+      const existingAlpha = parseFloat(match[4]);
+      return `rgba(${match[1]}, ${match[2]}, ${match[3]}, ${existingAlpha * alpha})`;
+    }
+  }
+  if (colorStr.startsWith('#')) {
+    let hex = colorStr.substring(1).trim();
+    if (hex.length === 3) {
+      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+  }
+  return colorStr;
+};
+
+const convertColorMixStringToRgba = (colorMixStr: string): string => {
+  try {
+    const regex1 = /color-mix\(\s*in\s+srgb\s*,\s*(rgb\([^\)]+\)|rgba\([^\)]+\)|#[a-fA-F0-9]{3,8}|[A-Za-z]+)\s+([0-9.]+)%\s*,\s*transparent\s*\)/i;
+    const match1 = colorMixStr.match(regex1);
+    if (match1) {
+      const color = match1[1];
+      const pct = parseFloat(match1[2]) / 100;
+      return convertColorToRgbaWithAlpha(color, pct);
+    }
+    
+    const regex2 = /color-mix\(\s*in\s+srgb\s*,\s*transparent\s*,\s*(rgb\([^\)]+\)|rgba\([^\)]+\)|#[a-fA-F0-9]{3,8}|[A-Za-z]+)\s+([0-9.]+)%\)/i;
+    const match2 = colorMixStr.match(regex2);
+    if (match2) {
+      const color = match2[1];
+      const pct = parseFloat(match2[2]) / 100;
+      return convertColorToRgbaWithAlpha(color, pct);
+    }
+    return colorMixStr;
+  } catch (e) {
+    return colorMixStr;
+  }
+};
+
+const cleanCssText = (text: string): string => {
+  let currentText = text;
+  
+  // 1. Process all oklch(...) occurrences
+  const oklchRegex = /oklch\([^)]+\)/gi;
+  currentText = currentText.replace(oklchRegex, (match) => {
+    return convertOklchStringToRgb(match);
+  });
+  
+  // 2. Process all oklab(...) occurrences
+  const oklabRegex = /oklab\([^)]+\)/gi;
+  currentText = currentText.replace(oklabRegex, (match) => {
+    return convertOklabStringToRgb(match);
+  });
+  
+  // 3. Process all color-mix(...) occurrences involving transparent
+  const colorMixRegex = /color-mix\(\s*in\s+srgb\s*,\s*(rgb\([^\)]+\)|rgba\([^\)]+\)|#[a-fA-F0-9]{3,8}|[A-Za-z]+)\s+[0-9.]+%\s*,\s*transparent\s*\)/gi;
+  currentText = currentText.replace(colorMixRegex, (match) => {
+    return convertColorMixStringToRgba(match);
+  });
+
+  const colorMixRegex2 = /color-mix\(\s*in\s+srgb\s*,\s*transparent\s*,\s*(rgb\([^\)]+\)|rgba\([^\)]+\)|#[a-fA-F0-9]{3,8}|[A-Za-z]+)\s+[0-9.]+%\)/gi;
+  currentText = currentText.replace(colorMixRegex2, (match) => {
+    return convertColorMixStringToRgba(match);
+  });
+
+  // 4. Fallback sweep for legacy or other complex elements to avoid crashes
+  let lastText = '';
+  for (let i = 0; i < 3 && currentText !== lastText; i++) {
+    lastText = currentText;
+    currentText = currentText
+      .replace(/color-mix\((?:[^()]+|\([^()]*\))*\)/gi, '#1a1a1a')
+      .replace(/\boklab\b/gi, 'srgb')
+      .replace(/\boklch\b/gi, 'srgb');
+  }
+
+  return currentText;
+};
+
 const sanitizeOklchColors = async (): Promise<StylesheetBackup[]> => {
   const backups: StylesheetBackup[] = [];
   try {
-    const cleanCssText = (text: string): string => {
-      return text.replace(/(oklch|oklab)\(([^()]+|\([^()]*\))*\)/gi, 'rgb(120, 120, 120)');
-    };
-
     // 1. Sanitize textContent of style elements
     const styleNodes = Array.from(document.querySelectorAll('style')) as HTMLStyleElement[];
     for (const node of styleNodes) {
       const originalText = node.textContent || '';
-      if (originalText.includes('oklch') || originalText.includes('oklab')) {
+      if (originalText.includes('oklch') || originalText.includes('oklab') || originalText.includes('color-mix')) {
         const cleanText = cleanCssText(originalText);
         node.textContent = cleanText;
         backups.push({ type: 'style-node', element: node, originalContent: originalText });
@@ -51,12 +256,12 @@ const sanitizeOklchColors = async (): Promise<StylesheetBackup[]> => {
               const style = rule.style;
               const cssText = rule.cssText;
               
-              if (cssText.includes('oklch') || cssText.includes('oklab')) {
+              if (cssText.includes('oklch') || cssText.includes('oklab') || cssText.includes('color-mix')) {
                 // Sanitize indexed properties
                 for (let i = 0; i < style.length; i++) {
                   const prop = style[i];
                   const val = style.getPropertyValue(prop);
-                  if (val.includes('oklch') || val.includes('oklab')) {
+                  if (val.includes('oklch') || val.includes('oklab') || val.includes('color-mix')) {
                     const newVal = cleanCssText(val);
                     backups.push({
                       type: 'cssom',
@@ -75,7 +280,7 @@ const sanitizeOklchColors = async (): Promise<StylesheetBackup[]> => {
                     const colonIndex = match.indexOf(':');
                     const propName = match.substring(0, colonIndex).trim();
                     const propVal = match.substring(colonIndex + 1).trim();
-                    if (propVal && (propVal.includes('oklch') || propVal.includes('oklab'))) {
+                    if (propVal && (propVal.includes('oklch') || propVal.includes('oklab') || propVal.includes('color-mix'))) {
                       const newVal = cleanCssText(propVal);
                       const currentValInStyle = style.getPropertyValue(propName);
                       backups.push({
@@ -138,6 +343,7 @@ const restoreOklchColors = (backups: StylesheetBackup[]) => {
 export const ResultReport: React.FC<ResultReportProps> = ({ testId, athleteData, kicks = [], onReset }) => {
   const reportRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showDownloadHelp, setShowDownloadHelp] = useState(false);
 
   // Recovery of parameters with safe defaults
   const normalizedAthlete = {
@@ -193,7 +399,7 @@ export const ResultReport: React.FC<ResultReportProps> = ({ testId, athleteData,
     setIsDownloading(true);
     let backups: StylesheetBackup[] = [];
     try {
-      // Clean all oklch colors across stylesheets in the parent document prior to canvas snapshotting
+      // Clean all oklch/color-mix colors across stylesheets in the parent document prior to canvas snapshotting
       backups = await sanitizeOklchColors();
 
       // Temporarily remove shadow and border for perfect capture matching official print
@@ -214,8 +420,8 @@ export const ResultReport: React.FC<ResultReportProps> = ({ testId, athleteData,
               const styledElements = clonedDoc.querySelectorAll('[style]');
               styledElements.forEach(el => {
                 const styleAttr = el.getAttribute('style') || '';
-                if (styleAttr.includes('oklch') || styleAttr.includes('oklab')) {
-                  const cleanStyle = styleAttr.replace(/(oklch|oklab)\(([^()]+|\([^()]*\))*\)/gi, 'rgb(120, 120, 120)');
+                if (styleAttr.includes('oklch') || styleAttr.includes('oklab') || styleAttr.includes('color-mix')) {
+                  const cleanStyle = cleanCssText(styleAttr);
                   el.setAttribute('style', cleanStyle);
                 }
               });
@@ -264,8 +470,8 @@ export const ResultReport: React.FC<ResultReportProps> = ({ testId, athleteData,
               const styledElements = clonedDoc.querySelectorAll('[style]');
               styledElements.forEach(el => {
                 const styleAttr = el.getAttribute('style') || '';
-                if (styleAttr.includes('oklch') || styleAttr.includes('oklab')) {
-                  const cleanStyle = styleAttr.replace(/(oklch|oklab)\(([^()]+|\([^()]*\))*\)/gi, 'rgb(120, 120, 120)');
+                if (styleAttr.includes('oklch') || styleAttr.includes('oklab') || styleAttr.includes('color-mix')) {
+                  const cleanStyle = cleanCssText(styleAttr);
                   el.setAttribute('style', cleanStyle);
                 }
               });
@@ -300,13 +506,7 @@ export const ResultReport: React.FC<ResultReportProps> = ({ testId, athleteData,
         setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
       } catch (fallbackErr) {
         console.error("Metode kedua juga gagal:", fallbackErr);
-        alert(
-          "Fitur unduhan PDF langsung diblokir oleh sistem atau browser Anda karena keterbatasan sandbox iframe.\n\n" +
-          "SOLUSI MUDAH / CARA TERBAIK:\n" +
-          "1. Klik tombol 'CETAK' di sebelah atas.\n" +
-          "2. Pada dialog menu cetak, pilih Tujuan: 'Simpan sebagai PDF' (Save as PDF).\n" +
-          "3. Klik tombol 'Simpan' untuk mengunduh laporan 1 lembar utuh dengan sempurna!"
-        );
+        setShowDownloadHelp(true);
       }
     } finally {
       // Always restore colors to original beautiful OKLCH right after execution completes
@@ -584,21 +784,21 @@ export const ResultReport: React.FC<ResultReportProps> = ({ testId, athleteData,
                     {kicks.map((k, i) => {
                       const spd = 1.5 / (k.duration || 0.5);
                       return (
-                        <tr key={i} className="hover:bg-slate-50/50 leading-none divide-x divide-slate-100">
-                          <td className="px-3.5 py-1.5 text-center font-mono font-bold text-slate-400 border-r border-slate-100 bg-slate-50/30">
+                        <tr key={i} className="hover:bg-slate-50/50 divide-x divide-slate-100">
+                          <td className="px-3.5 py-2 text-center align-middle font-mono font-bold text-slate-400 border-r border-slate-100 bg-slate-50/30">
                             {(i + 1).toString().padStart(2, '0')}
                           </td>
-                          <td className="px-4 py-1.5 font-bold text-slate-900 text-xs">
+                          <td className="px-4 py-2 align-middle font-bold text-slate-900 text-xs">
                             {k.accuracy_points} <span className="text-[8px] font-normal text-slate-400">/ 100</span>
                           </td>
-                          <td className="px-4 py-1.5 font-mono text-slate-600">
+                          <td className="px-4 py-2 align-middle font-mono text-slate-600">
                             {(k.duration || 0).toFixed(3)} s
                           </td>
-                          <td className="px-4 py-1.5 font-mono font-bold text-upi-red text-xs">
+                          <td className="px-4 py-2 align-middle font-mono font-bold text-upi-red text-xs">
                             {spd.toFixed(2)} <span className="text-[8px] font-normal text-slate-400">m/s</span>
                           </td>
-                          <td className="px-4 py-1.5 text-center">
-                            <span className={`inline-block px-2.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
+                          <td className="px-4 py-2 text-center align-middle">
+                            <span className={`inline-flex items-center justify-center h-5 px-3 rounded text-[8px] font-black uppercase tracking-widest leading-none ${
                               k.accuracy_points >= 80 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
                               k.accuracy_points >= 50 ? 'bg-amber-100 text-amber-800 border border-amber-200' :
                               'bg-rose-100 text-rose-850 border border-rose-200'
@@ -665,6 +865,90 @@ export const ResultReport: React.FC<ResultReportProps> = ({ testId, athleteData,
 
         </div>
       </div>
+
+      {/* Help Modal Dialog for blocked downloads (Alternative instructions & New Tab launcher) */}
+      {showDownloadHelp && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in print:hidden">
+          <motion.div 
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200"
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-upi-red to-red-800 p-6 text-white relative">
+              <button 
+                onClick={() => setShowDownloadHelp(false)}
+                className="absolute top-4 right-4 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-6 h-6 text-upi-gold" />
+                <div>
+                  <h3 className="font-display font-black tracking-tight text-lg uppercase leading-tight">
+                    Unduhan Terhambat Sandbox
+                  </h3>
+                  <p className="text-xs text-white/80 tracking-wide uppercase font-bold text-[9px] mt-0.5">
+                    Keterbatasan Browser di Dalam Frame
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-5">
+              <p className="text-xs text-slate-650 leading-relaxed font-semibold">
+                Sistem keamanan browser memblokir unduhan langsung dari dalam frame sandbox. Silakan gunakan salah satu solusi mudah berikut:
+              </p>
+
+              <div className="space-y-3">
+                {/* Method 1 */}
+                <div className="flex gap-4 p-3.5 bg-amber-50/70 rounded-2xl border border-amber-200">
+                  <span className="w-6 h-6 bg-amber-500 text-white rounded-lg flex items-center justify-center font-bold text-xs shrink-0">1</span>
+                  <div className="text-xs">
+                    <p className="font-bold text-slate-800 uppercase text-[10px] tracking-wider">Metode Cetak (Sangat Mudah)</p>
+                    <p className="text-slate-650 mt-1 leading-relaxed">
+                      Klik tombol <strong className="text-slate-900 font-bold">CETAK</strong> di sebelah atas laporan, lalu pilih printer tujuan/destination sebagai <strong className="text-slate-900 font-semibold">"Save as PDF"</strong> atau <strong className="text-slate-900 font-semibold">"Simpan sebagai PDF"</strong>.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Method 2 */}
+                <div className="flex gap-4 p-3.5 bg-red-50/50 rounded-2xl border border-upi-red/10 animate-pulse">
+                  <span className="w-6 h-6 bg-upi-red text-white rounded-lg flex items-center justify-center font-bold text-xs shrink-0">2</span>
+                  <div className="text-xs">
+                    <p className="font-bold text-upi-red uppercase text-[10px] tracking-wider">Metode Buka Di Tab Baru</p>
+                    <p className="text-slate-650 mt-1 leading-relaxed">
+                      Buka aplikasi ini pada tab atau jendela browser baru dengan tombol di bawah. Di sana, fitur unduhan langsung berjalan 100% lancar tanpa hambatan sandbox!
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-3">
+                <a 
+                  href={window.location.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 bg-gradient-to-r from-upi-red to-red-650 text-white font-display font-black text-xs tracking-wider uppercase text-center py-3.5 rounded-2xl shadow-md hover:opacity-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <ExternalLink className="w-4 h-4 text-upi-gold" /> BUKA DI TAB BARU
+                </a>
+                <button 
+                  onClick={() => {
+                    setShowDownloadHelp(false);
+                    handlePrint();
+                  }}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-display font-black text-xs tracking-wider uppercase py-3.5 rounded-2xl transition-all cursor-pointer"
+                >
+                  COBA CETAK SEKARANG
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };
