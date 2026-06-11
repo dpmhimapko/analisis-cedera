@@ -166,24 +166,24 @@ export default function App() {
       </div>
 
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-xl border-b border-slate-100 p-4 sticky top-0 z-50 shadow-sm overflow-hidden animate-fade-in">
+      <header className="bg-white/80 backdrop-blur-xl border-b border-slate-100 p-3 sm:p-4 sticky top-0 z-50 shadow-sm overflow-hidden animate-fade-in">
         <div className="max-w-7xl mx-auto flex items-center justify-between relative z-10">
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="cursor-pointer group flex items-center gap-4" 
+            className="cursor-pointer group flex items-center gap-2 sm:gap-4" 
             onClick={() => user && setCurrentPage('dashboard')}
           >
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-slate-200/50 group-hover:scale-110 transition-transform overflow-hidden border border-slate-100">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-slate-200/50 group-hover:scale-110 transition-transform overflow-hidden border border-slate-100">
               <img 
                 src="https://lh3.googleusercontent.com/d/150kr_WKX4Ha1bV6x8hnAJhB7X02PZKhk" 
                 alt="UPI Logo" 
-                className="w-10 h-10 object-contain"
+                className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
                 referrerPolicy="no-referrer"
               />
             </div>
             <div className="flex flex-col">
-              <h1 className="text-3xl font-display font-black tracking-tighter text-slate-900 leading-none group-hover:text-upi-red transition-colors title-glitch uppercase font-black">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-display font-black tracking-tighter text-slate-900 leading-none group-hover:text-upi-red transition-colors title-glitch uppercase">
                 SILAT<span className="text-upi-red group-hover:text-slate-900 transition-colors">METRICS</span>
               </h1>
             </div>
@@ -248,13 +248,13 @@ export default function App() {
           
           {/* Mobile indicator / Quick access */}
           {user && (
-            <div className="xl:hidden flex items-center gap-4">
-              <div className="text-[10px] font-black text-upi-red uppercase tracking-widest border border-upi-red/20 px-3 py-1 rounded-full">
-                {user.role === 'atlet' ? 'Atlet' : 'Pelatih'}: {currentPage.replace('-', ' ')}
+            <div className="xl:hidden flex items-center gap-2">
+              <div className="text-[10px] sm:text-[11px] font-black text-upi-red uppercase tracking-widest border border-upi-red/20 px-3 py-1 rounded-full bg-red-50/50">
+                {user.role === 'atlet' ? 'Atlet' : 'Pelatih'}
               </div>
               <button 
                 onClick={handleLogout}
-                className="p-2 bg-slate-50 rounded-xl text-red-500 border border-slate-100 hover:bg-red-50"
+                className="p-2 bg-slate-50 rounded-xl text-red-500 border border-slate-100 hover:bg-red-50 active:scale-95 transition-transform"
                 title="Logout"
               >
                 <LogOut className="w-4 h-4" />
@@ -264,7 +264,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto w-full p-6 flex-grow relative z-10">
+      <main className="max-w-7xl mx-auto w-full p-4 sm:p-6 pb-24 xl:pb-6 flex-grow relative z-10">
         <AnimatePresence mode="wait">
           {!user ? (
             <motion.div key="login" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }}>
@@ -292,15 +292,11 @@ export default function App() {
               )}
               {currentPage === 'assessment' && user.role === 'pelatih' && (
                  <motion.div key="assess" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                    {!athleteData ? (
-                        <div className="p-20 text-center space-y-6 premium-card">
-                             <User className="w-16 h-16 mx-auto text-slate-200" />
-                             <p className="text-xl font-bold text-slate-400">Silakan pilih atau isi Data Atlet terlebih dahulu.</p>
-                             <button onClick={() => setCurrentPage('athlete-data')} className="action-button">KE DATA ATLET</button>
-                        </div>
-                    ) : (
-                        <Assessment athleteData={athleteData} onComplete={handleAssessmentComplete} />
-                    )}
+                    <Assessment 
+                      athleteData={athleteData} 
+                      onSelectAthlete={setAthleteData} 
+                      onComplete={handleAssessmentComplete} 
+                    />
                  </motion.div>
               )}
               {currentPage === 'report' && testResults && (
@@ -332,19 +328,76 @@ export default function App() {
              </div>
              <div>
                 <p className="text-white font-display font-black tracking-widest text-sm uppercase">SILATMETRICS v3.0</p>
-                <p className="text-slate-500 text-[10px] uppercase tracking-widest">Laboratorium Biomekanika & AI UPI</p>
+                <p className="text-slate-500 text-[10px] uppercase tracking-widest">Laboratorium Biomekanika & Analisis Performa Olahraga UPI</p>
              </div>
           </div>
-          <div className="flex gap-6">
+          <div className="flex gap-6 flex-wrap justify-center md:justify-end">
+             <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">DESIGNED BY AHDAN</span>
              <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Privacy Policy</span>
              <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Terms of Use</span>
              <span className="text-upi-gold text-[10px] font-black uppercase tracking-widest">© 2026 Admin Panel</span>
           </div>
         </div>
       </footer>
+
+      {/* Mobile Bottom Navigation Bar */}
+      {user && (
+        <div className="xl:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-100 px-2 py-1.5 z-50 flex justify-around items-center shadow-[0_-10px_25px_rgba(0,0,0,0.05)] pb-safe print:hidden">
+          <MobileNavButton 
+            active={currentPage === 'dashboard'} 
+            onClick={() => setCurrentPage('dashboard')} 
+            icon={<LayoutDashboard className="w-5 h-5" />} 
+            label="Home" 
+          />
+          <MobileNavButton 
+            active={currentPage === 'athlete-data'} 
+            onClick={() => setCurrentPage('athlete-data')} 
+            icon={<User className="w-5 h-5" />} 
+            label={user.role === 'atlet' ? "Profil" : "Atlet"} 
+          />
+          {user.role === 'pelatih' && (
+            <>
+              <MobileNavButton 
+                active={currentPage === 'assessment'} 
+                onClick={() => setCurrentPage('assessment')} 
+                icon={<Upload className="w-5 h-5" />} 
+                label="Uji" 
+              />
+              <MobileNavButton 
+                active={currentPage === 'history'} 
+                onClick={() => setCurrentPage('history')} 
+                icon={<HistoryIcon className="w-5 h-5" />} 
+                label="Riwayat" 
+              />
+            </>
+          )}
+          {testResults && (
+            <MobileNavButton 
+              active={currentPage === 'report'} 
+              onClick={() => setCurrentPage('report')} 
+              icon={<FileText className="w-5 h-5" />} 
+              label="Laporan" 
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
+
+const MobileNavButton = ({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) => (
+  <button 
+    onClick={onClick}
+    className={`flex flex-col items-center justify-center gap-0.5 py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
+      active ? 'text-upi-red' : 'text-slate-400 hover:text-slate-600'
+    }`}
+  >
+    <div className={`p-1.5 rounded-lg transition-colors ${active ? 'bg-upi-red/10' : 'group-hover:bg-slate-50'}`}>
+      {icon}
+    </div>
+    <span className="text-[8px] font-black uppercase tracking-widest leading-none">{label}</span>
+  </button>
+);
 
 const NavButton = ({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) => (
   <button 

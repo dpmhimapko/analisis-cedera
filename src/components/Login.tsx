@@ -15,8 +15,9 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const [errorMsg, setErrorMsg] = useState('');
   
   // States for Stage 2 (Role Choice & Registration)
-  const [stage, setStage] = useState<'auth' | 'role' | 'register'>('auth');
+  const [stage, setStage] = useState<'auth' | 'role' | 'register' | 'password'>('auth');
   const [selectedRole, setSelectedRole] = useState<'pelatih' | 'atlet' | null>(null);
+  const [pelatihPassword, setPelatihPassword] = useState('');
   
   // Registration form inputs if Athlete isn't in DB yet
   const [newName, setNewName] = useState('');
@@ -66,10 +67,21 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
   const selectPelatih = () => {
     if (!googleUser) return;
-    onLoginSuccess({
-      role: 'pelatih',
-      athleteName: googleUser.displayName || 'Pelatih'
-    });
+    setPelatihPassword('');
+    setErrorMsg('');
+    setStage('password');
+  };
+
+  const handleVerifyPelatihPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pelatihPassword === 'pelatih123') {
+      onLoginSuccess({
+        role: 'pelatih',
+        athleteName: googleUser?.displayName || 'Pelatih'
+      });
+    } else {
+      setErrorMsg('Password Pelatih salah! Silakan coba lagi.');
+    }
   };
 
   const selectAtlet = async () => {
@@ -161,7 +173,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="w-full max-w-2xl bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl p-8 md:p-12 relative overflow-hidden"
+        className="w-full max-w-2xl bg-white rounded-[1.5rem] sm:rounded-[2.5rem] border border-slate-100 shadow-2xl p-5 sm:p-10 md:p-12 relative overflow-hidden"
       >
         {/* Aesthetic design accent */}
         <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-upi-red via-upi-gold to-upi-red"></div>
@@ -175,7 +187,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             <h2 className="text-3xl font-display font-black tracking-tight text-slate-900 leading-none uppercase">
               SILATMETRICS <span className="text-upi-red">PORTAL</span>
             </h2>
-            <p className="text-xs text-slate-400 uppercase tracking-widest mt-2 font-bold">Laboratorium Biomekanika & AI UPI</p>
+            <p className="text-xs text-slate-400 uppercase tracking-widest mt-2 font-bold">Laboratorium Biomekanika & Analisis Performa Olahraga UPI</p>
           </div>
         </div>
 
@@ -270,20 +282,20 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 <p className="text-xs text-slate-400 uppercase tracking-widest">Silakan pilih jenis portal yang ingin Anda akses</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pt-2">
                 {/* Pelatih Role Option */}
                 <button
                   type="button"
                   onClick={selectPelatih}
                   disabled={loading}
-                  className="p-8 rounded-3xl border border-slate-100 bg-white hover:border-upi-red hover:shadow-2xl hover:shadow-upi-red/5 transition-all flex flex-col items-center text-center gap-4 cursor-pointer group text-slate-800"
+                  className="p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-100 bg-white hover:border-upi-red hover:shadow-2xl hover:shadow-upi-red/5 transition-all flex flex-col items-center text-center gap-3 sm:gap-4 cursor-pointer group text-slate-800"
                 >
-                  <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center text-upi-red group-hover:bg-upi-red group-hover:text-white transition-all border border-red-100">
-                    <Shield className="w-8 h-8" />
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-red-50 rounded-2xl flex items-center justify-center text-upi-red group-hover:bg-upi-red group-hover:text-white transition-all border border-red-100">
+                    <Shield className="w-6 h-6 sm:w-8 sm:h-8" />
                   </div>
                   <div>
-                    <h4 className="text-lg font-display font-black uppercase text-slate-800 group-hover:text-upi-red transition-colors">PELATIH / PENGUJI</h4>
-                    <p className="text-xs text-slate-400 leading-relaxed mt-2 uppercase font-semibold">
+                    <h4 className="text-sm sm:text-lg font-display font-black uppercase text-slate-800 group-hover:text-upi-red transition-colors">PELATIH / PENGUJI</h4>
+                    <p className="text-[10px] sm:text-xs text-slate-400 leading-relaxed mt-2 uppercase font-semibold">
                       Analisis video, rekam detail biomekanika & kelola riwayat pemulihan tim atlet.
                     </p>
                   </div>
@@ -294,20 +306,65 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   type="button"
                   onClick={selectAtlet}
                   disabled={loading}
-                  className="p-8 rounded-3xl border border-slate-100 bg-white hover:border-upi-red hover:shadow-2xl hover:shadow-upi-red/5 transition-all flex flex-col items-center text-center gap-4 cursor-pointer group text-slate-800"
+                  className="p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-100 bg-white hover:border-upi-red hover:shadow-2xl hover:shadow-upi-red/5 transition-all flex flex-col items-center text-center gap-3 sm:gap-4 cursor-pointer group text-slate-800"
                 >
-                  <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center text-upi-gold group-hover:bg-upi-red group-hover:text-white transition-all border border-amber-100">
-                    <User className="w-8 h-8 text-upi-red" />
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-amber-50 rounded-2xl flex items-center justify-center text-upi-gold group-hover:bg-upi-red group-hover:text-white transition-all border border-amber-100">
+                    <User className="w-6 h-6 sm:w-8 sm:h-8 text-upi-red" />
                   </div>
                   <div>
-                    <h4 className="text-lg font-display font-black uppercase text-slate-800 group-hover:text-upi-red transition-colors">ATLET</h4>
-                    <p className="text-xs text-slate-400 leading-relaxed mt-2 uppercase font-semibold">
+                    <h4 className="text-sm sm:text-lg font-display font-black uppercase text-slate-800 group-hover:text-upi-red transition-colors">ATLET</h4>
+                    <p className="text-[10px] sm:text-xs text-slate-400 leading-relaxed mt-2 uppercase font-semibold">
                       Pantau perkembangan akurasi personal & statistik pemulihan biomekanis pasca cedera.
                     </p>
                   </div>
                 </button>
               </div>
             </motion.div>
+          )}
+
+          {stage === 'password' && googleUser && (
+            <motion.form
+              key="stage-password"
+              initial={{ opacity: 0, x: 15 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -15 }}
+              onSubmit={handleVerifyPelatihPassword}
+              className="space-y-6"
+            >
+              <div className="flex items-center gap-2 text-upi-red border-b border-slate-100 pb-3 mb-4">
+                <Shield className="w-5 h-5 animate-pulse" />
+                <h4 className="font-display font-black text-xs uppercase tracking-widest text-[#990000]">Verifikasi Akses Khusus Pelatih</h4>
+              </div>
+
+              <div className="space-y-2">
+                <label className="section-label">Password Pelatih</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Masukkan password pelatih..."
+                  className="form-input text-sm"
+                  value={pelatihPassword}
+                  onChange={(e) => setPelatihPassword(e.target.value)}
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => { setStage('role'); setErrorMsg(''); }}
+                  className="secondary-button !py-3 !px-6 text-sm flex-none uppercase tracking-widest font-black"
+                >
+                  KEMBALI
+                </button>
+                <button
+                  type="submit"
+                  className="action-button flex-grow !py-3 font-display font-black uppercase text-xs tracking-widest"
+                >
+                  VERIFIKASI & MASUK <Check className="w-5 h-5 ml-1" />
+                </button>
+              </div>
+            </motion.form>
           )}
 
           {stage === 'register' && googleUser && (

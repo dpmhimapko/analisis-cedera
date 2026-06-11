@@ -364,7 +364,7 @@ export const ResultReport: React.FC<ResultReportProps> = ({ testId, athleteData,
   const getCategory = (acc: number, spd: number) => {
     if (acc >= 85 && spd >= 4.5) {
       return { 
-        label: 'TINGGI / MANDIRI', 
+        label: 'TINGGI / SANGAT BAIK', 
         color: 'border-emerald-600 text-emerald-800 bg-emerald-50', 
         badge: 'bg-emerald-500 text-white',
         desc: 'Sangat Baik (Siap Kompetisi)' 
@@ -372,17 +372,17 @@ export const ResultReport: React.FC<ResultReportProps> = ({ testId, athleteData,
     }
     if (acc >= 65 && spd >= 3.0) {
       return { 
-        label: 'SEDANG / REHAB-STAT', 
+        label: 'SEDANG / CUKUP BAIK', 
         color: 'border-amber-500 text-amber-800 bg-amber-50',
         badge: 'bg-amber-500 text-white', 
-        desc: 'Cukup Baik (Recovery Terarah)' 
+        desc: 'Cukup Baik (Perlu Optimalisasi)' 
       };
     }
     return { 
-      label: 'RENDAH / PERLU BIMBINGAN', 
+      label: 'RENDAH / PERLU PENINGKATAN', 
       color: 'border-rose-500 text-rose-800 bg-rose-50',
       badge: 'bg-rose-500 text-white', 
-      desc: 'Perlu Latihan Intensif Stabilitas' 
+      desc: 'Perlu Latihan Intensif Akurasi & Kecepatan' 
     };
   };
 
@@ -594,7 +594,7 @@ export const ResultReport: React.FC<ResultReportProps> = ({ testId, athleteData,
                     DEPARTEMEN PENDIDIKAN KEPELATIHAN OLAHRAGA
                   </p>
                   <p className="text-[11px] font-black text-slate-800 tracking-wide mt-0.5 uppercase">
-                    LABORATORIUM BIOMEKANIKA & REHABILITASI OLAHRAGA
+                    LABORATORIUM BIOMEKANIKA & ANALISIS PERFORMA OLAHRAGA
                   </p>
                 </div>
               </div>
@@ -641,12 +641,12 @@ export const ResultReport: React.FC<ResultReportProps> = ({ testId, athleteData,
                 <p className="text-[9px] text-slate-500 font-bold uppercase">{normalizedAthlete.bodyPart}</p>
               </div>
               <div>
-                <p className="text-[9px] font-black text-slate-400 tracking-widest uppercase mb-0.5">Fase Terapi & Tanggal</p>
+                <p className="text-[9px] font-black text-slate-400 tracking-widest uppercase mb-0.5">Tanggal Analisis</p>
                 <p className="text-xs font-black text-slate-900 uppercase">
-                  Minggu ke-{normalizedAthlete.recoveryTime}
+                  {format(new Date(), 'dd-MM-yyyy')}
                 </p>
                 <p className="text-[9px] font-mono text-slate-500">
-                  {format(new Date(), 'dd-MM-yyyy HH:mm')} WIB
+                  {format(new Date(), 'HH:mm')} WIB
                 </p>
               </div>
             </div>
@@ -690,7 +690,7 @@ export const ResultReport: React.FC<ResultReportProps> = ({ testId, athleteData,
                   </div>
                 </div>
                 <div className="flex items-center gap-1 text-[8px] font-black text-slate-500 tracking-wider mt-1 border-t border-slate-100 pt-1.5">
-                  TARGET REHAB: <span className="text-slate-900 uppercase font-black">{avgSpeed >= 4.0 ? 'MELAMPAUI' : 'BERPROGRES'} ({avgSpeed >= 4.0 ? '≥ 4.0' : '< 4.0'})</span>
+                  TARGET PERFORMA: <span className="text-slate-900 uppercase font-black">{avgSpeed >= 4.0 ? 'TERCAPAI' : 'BELUM TERCAPAI'} (Standard &ge; 4.0 m/s)</span>
                 </div>
               </div>
 
@@ -706,7 +706,7 @@ export const ResultReport: React.FC<ResultReportProps> = ({ testId, athleteData,
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest mt-1 border-t border-slate-900/10 pt-1.5 opacity-90">
-                  <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" /> TERVALIDASI KLINIS
+                  <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" /> ANALISIS VALID
                 </div>
               </div>
             </div>
@@ -775,7 +775,7 @@ export const ResultReport: React.FC<ResultReportProps> = ({ testId, athleteData,
                     <tr className="divide-x divide-slate-100">
                       <th className="px-3.5 py-1.5 text-[8px] font-black text-slate-400 uppercase tracking-wider text-center w-12">No</th>
                       <th className="px-4 py-1.5 text-[8px] font-black text-slate-400 uppercase tracking-wider">Akurasi (Poin)</th>
-                      <th className="px-4 py-1.5 text-[8px] font-black text-slate-400 uppercase tracking-wider">Durasi Kontak</th>
+                      <th className="px-4 py-1.5 text-[8px] font-black text-slate-400 uppercase tracking-wider">Durasi Tendangan (s)</th>
                       <th className="px-4 py-1.5 text-[8px] font-black text-slate-400 uppercase tracking-wider">Kecepatan Eksekusi</th>
                       <th className="px-4 py-1.5 text-[8px] font-black text-slate-400 uppercase tracking-wider text-center">Status Kelayakan</th>
                     </tr>
@@ -816,18 +816,18 @@ export const ResultReport: React.FC<ResultReportProps> = ({ testId, athleteData,
           </div>
 
           <div className="space-y-4">
-            {/* 6. Medical Recovery Remarks & Recommendations (1 Row Dual Box) */}
+            {/* 6. Kesimpulan & Rekomendasi Performa (1 Row Dual Box) */}
             <div className="grid grid-cols-5 gap-4 border-t border-slate-200 pt-3">
               <div className="col-span-3 space-y-1.5">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Kesimpulan & Analisis Rehabilitatif</span>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Kesimpulan & Analisis Performa Biomekanika</span>
                 <p className="text-[10px] text-slate-700 leading-relaxed font-medium">
-                  Atlet menunjukkan pemulihan motorik fungsional kaki kiri sebesar <span className="font-bold text-slate-900">{avgAccuracy.toFixed(1)}%</span> dengan rata-rata kecepatan impak <span className="font-bold text-slate-900">{avgSpeed.toFixed(2)} m/s</span>. Terdapat pemulihan signifikan pada stabilitas tendon Achilles dalam fase impact pendaratan. Kelurusan sudut tendangan lurus sangat konsisten (<span className="text-emerald-700 font-bold">Teruji Stabil</span>).
+                  Atlet menunjukkan tingkat akurasi tendangan lurus rata-rata sebesar <span className="font-bold text-slate-900">{avgAccuracy.toFixed(1)}%</span> dengan kecepatan impak rata-rata <span className="font-bold text-slate-900">{avgSpeed.toFixed(2)} m/s</span>. Koordinasi gerak kaki sangat baik, terdapat stabilitas yang sangat tinggi pada tungkai tumpu dalam fase impak pendaratan, dan kelurusan sudut lintasan kaki sangat konsisten (<span className="text-emerald-700 font-bold">Teruji Stabil</span>).
                 </p>
               </div>
               <div className="col-span-2 bg-slate-50 border border-slate-200 p-2.5 rounded-lg space-y-1">
-                <span className="text-[8px] font-black text-slate-500 uppercase tracking-wider block">Rekomendasi Latihan Pelatih:</span>
+                <span className="text-[8px] font-black text-slate-500 uppercase tracking-wider block">Rekomendasi Pelatih:</span>
                 <p className="text-[9px] text-slate-600 leading-relaxed">
-                  Pertahankan latihan plyometrics intensitas sedang. Fokus terapi pada penguatan reaktivitas otot betis (gastrocnemius) tungkai kiri untuk meningkatkan eksplosivitas kecepatan ke arah {`>= 4.5`} m/s.
+                  Fokuskan porsi latihan pada peningkatan eksplosivitas (daya ledak otot) tungkai kaki untuk mendorong kecepatan eksekusi di atas target standard {`>= 4.0`} m/s dengan tetap mempertahankan tingkat presisi akurasi di atas 80%.
                 </p>
               </div>
             </div>
@@ -849,16 +849,16 @@ export const ResultReport: React.FC<ResultReportProps> = ({ testId, athleteData,
                 <p className="text-[8px] text-slate-500 uppercase">Kepala Laboratorium Biomekanika UPI</p>
               </div>
               <div className="text-center">
-                <p className="text-slate-400 font-bold uppercase text-[8px] tracking-wider mb-10">Rehabilitator / Pelatih Pembimbing,</p>
+                <p className="text-slate-400 font-bold uppercase text-[8px] tracking-wider mb-10">Pelatih Pembimbing / Penilai,</p>
                 <div className="inline-block border-b border-slate-800 w-48 mb-0.5"></div>
                 <p className="font-black text-slate-800 uppercase text-[9px]">Rinaldi Malik, M.Pd.</p>
-                <p className="text-[8px] text-slate-500 uppercase">Pelatih Utama & Ahli Fisioterapi Olahraga</p>
+                <p className="text-[8px] text-slate-500 uppercase">Pelatih Utama & Ahli Kepelatihan Olahraga</p>
               </div>
             </div>
 
             {/* 8. Micro Administrative Footer */}
             <div className="border-t border-slate-100 pt-2 flex justify-between text-[8px] font-mono text-slate-400">
-              <span>Sertifikasi Sport Science UPI FPOK. Dokumen ditandatangani secara elektronik demi keabsahan klinis.</span>
+              <span>Sertifikasi Sport Science UPI FPOK. Dokumen ditandatangani secara elektronik demi keabsahan performa.</span>
               <span className="font-bold">VERIFIKASI_DOKUMEN_OK // HASH_UPI_#{testId.toString().padStart(4, '0')}</span>
             </div>
           </div>

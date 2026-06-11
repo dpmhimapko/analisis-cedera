@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { User, Calendar, Ruler, Activity, Clock, Save, Plus, ChevronRight, UserPlus, CheckCircle2 } from 'lucide-react';
-import { collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
+import { User, Calendar, Ruler, Activity, Clock, Save, Plus, ChevronRight, UserPlus, CheckCircle2, Trash2 } from 'lucide-react';
+import { collection, getDocs, doc, setDoc, getDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { db, OperationType, handleFirestoreError } from '../firebase';
 
 interface Athlete {
@@ -28,8 +28,7 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
     age: '',
     gender: 'Laki-laki',
     injuryType: '',
-    bodyPart: '',
-    recoveryTime: ''
+    bodyPart: ''
   });
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [showForm, setShowForm] = useState(!!isAthleteMode);
@@ -37,6 +36,8 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
   const [loading, setLoading] = useState(false);
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
   const [isSeeding, setIsSeeding] = useState(false);
+  const [athleteToDelete, setAthleteToDelete] = useState<Athlete | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleSeedDemo = async () => {
     setIsSeeding(true);
@@ -197,8 +198,7 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
                 age: currentAthlete.age.toString(),
                 gender: currentAthlete.gender,
                 injuryType: currentAthlete.injury_type || '',
-                bodyPart: currentAthlete.body_part || '',
-                recoveryTime: currentAthlete.recovery_time?.toString() || ''
+                bodyPart: currentAthlete.body_part || ''
               });
               setShowForm(true);
             }
@@ -236,7 +236,7 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
         gender: formData.gender,
         injury_type: formData.injuryType,
         body_part: formData.bodyPart,
-        recovery_time: parseInt(formData.recoveryTime) || 0,
+        recovery_time: 0,
         created_at: new Date().toISOString()
       }, { merge: true });
 
@@ -248,6 +248,30 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
     }
   };
 
+  const handleDeleteAthlete = async (athlete: Athlete) => {
+    setIsDeleting(true);
+    const athletePath = `athletes/${athlete.id}`;
+    try {
+      // 1. Delete associated tests
+      const testsQueryRef = query(collection(db, "tests"), where("athlete_id", "==", athlete.id));
+      const querySnap = await getDocs(testsQueryRef);
+      const deletePromises = querySnap.docs.map(docSnap => deleteDoc(doc(db, "tests", docSnap.id)));
+      await Promise.all(deletePromises);
+
+      // 2. Delete athlete doc
+      await deleteDoc(doc(db, "athletes", athlete.id));
+
+      // 3. Update local state
+      setAthletes(prev => prev.filter(item => item.id !== athlete.id));
+      setAthleteToDelete(null);
+    } catch (err) {
+      console.error("Gagal menghapus data atlet:", err);
+      handleFirestoreError(err, OperationType.DELETE, athletePath);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const selectAthlete = (a: Athlete) => {
     const data = {
       id: a.id,
@@ -255,37 +279,36 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
       age: (a.age ?? '').toString(),
       gender: a.gender || 'Laki-laki',
       injuryType: a.injury_type || '',
-      bodyPart: a.body_part || '',
-      recoveryTime: (a.recovery_time ?? '').toString()
+      bodyPart: a.body_part || ''
     };
     setFormData(data);
     onNext(data);
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-12 pb-20">
-      <div className="flex items-center justify-between">
+    <div className="max-w-4xl mx-auto space-y-6 sm:space-y-12 pb-20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
         <div>
-          <h2 className="text-6xl font-display font-black tracking-tighter text-slate-900 leading-none uppercase title-glitch">
+          <h2 className="text-3xl sm:text-4xl md:text-6xl font-display font-black tracking-tighter text-slate-900 leading-none uppercase title-glitch">
             {isAthleteMode ? "PROFIL " : "DATA "}
             <span className="text-upi-red">{isAthleteMode ? "ANDA" : "ATLET"}</span>
           </h2>
-          <div className="flex items-center gap-3 mt-4">
+          <div className="flex items-center gap-3 mt-3 sm:mt-4">
             <div className="h-1 w-12 bg-upi-red"></div>
-            <p className="text-sm text-slate-500 font-black uppercase tracking-widest">
+            <p className="text-xs sm:text-sm text-slate-500 font-bold sm:font-black uppercase tracking-widest">
               {isAthleteMode ? "Perbarui Informasi Identitas Diri Anda" : "Registrasi & Identitas Profile Atlet"}
             </p>
           </div>
         </div>
         {!showForm && !isAthleteMode && (
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
             <button
               onClick={handleSeedDemo}
               disabled={isSeeding}
-              className="bg-slate-900 border border-slate-800 text-slate-100 font-black py-4 px-6 rounded-2xl flex items-center gap-2 hover:bg-slate-850 disabled:opacity-50 transition-all text-xs tracking-wider uppercase cursor-pointer"
+              className="bg-slate-900 border border-slate-800 text-slate-100 font-black py-2.5 sm:py-4 px-4 sm:px-6 rounded-xl sm:rounded-2xl flex items-center gap-2 hover:bg-slate-850 disabled:opacity-50 transition-all text-[10px] sm:text-xs tracking-wider uppercase cursor-pointer flex-1 sm:flex-initial justify-center"
             >
               {isSeeding ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 "⚡"
               )}
@@ -304,9 +327,9 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
                   recoveryTime: ''
                 });
               }}
-              className="gold-button !py-4 !px-8 cursor-pointer"
+              className="gold-button !py-2.5 sm:!py-4 !px-4 sm:!px-8 cursor-pointer flex-1 sm:flex-initial"
             >
-              <UserPlus className="w-5 h-5" /> TAMBAH BARU
+              <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 hover:scale-115 transition-transform" /> TAMBAH BARU
             </button>
           </div>
         )}
@@ -316,7 +339,7 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="premium-card p-10 relative overflow-hidden"
+          className="premium-card p-5 sm:p-10 relative overflow-hidden"
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-upi-red/5 rounded-full translate-x-1/3 -translate-y-1/3 blur-3xl"></div>
           
@@ -343,7 +366,6 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
               <div className="space-y-6">
                 <InputGroup icon={<Activity />} label="Jenis Cedera Pasca Latihan" id="injury" value={formData.injuryType} onChange={(val: string) => setFormData({...formData, injuryType: val})} placeholder="Contoh: ACL, Meniscus, Sprain..." />
                 <InputGroup icon={<Ruler />} label="Bagian Tubuh" id="part" value={formData.bodyPart} onChange={(val: string) => setFormData({...formData, bodyPart: val})} placeholder="Contoh: Lutut Kanan..." />
-                <InputGroup icon={<Clock />} label="Target Masa Pemulihan (Minggu)" id="recovery" type="number" value={formData.recoveryTime} onChange={(val: string) => setFormData({...formData, recoveryTime: val})} placeholder="Contoh: 12" />
               </div>
             </div>
 
@@ -402,18 +424,33 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.05 }}
                   onClick={() => selectAthlete(a)}
-                  className="premium-card p-6 flex items-center justify-between group cursor-pointer hover:border-upi-red transition-all"
+                  className="premium-card p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group cursor-pointer hover:border-upi-red transition-all"
                 >
-                  <div className="flex items-center gap-6">
-                    <div className="w-16 h-16 bg-slate-50 flex items-center justify-center rounded-2xl group-hover:bg-upi-red/10 transition-colors">
-                      <User className="text-slate-400 group-hover:text-upi-red transition-colors" />
+                  <div className="flex items-center gap-4 sm:gap-6 w-full min-w-0">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-slate-50 flex items-center justify-center rounded-xl sm:rounded-2xl group-hover:bg-upi-red/10 transition-colors shrink-0">
+                      <User className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400 group-hover:text-upi-red transition-colors" />
                     </div>
-                    <div>
-                      <h4 className="text-xl font-display font-black text-slate-900 leading-tight">{a.name}</h4>
-                      <p className="text-xs text-slate-400 uppercase tracking-widest">{a.id} • {a.injury_type || "Tidak ada riwayat cedera"}</p>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-base sm:text-xl font-display font-black text-slate-900 leading-tight truncate">{a.name}</h4>
+                      <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-widest truncate">{a.id} • {a.injury_type || "Tidak ada riwayat cedera"}</p>
                     </div>
                   </div>
-                  <ChevronRight className="text-slate-200 group-hover:text-upi-red transition-colors" />
+                  <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t border-slate-50 sm:border-0 pt-3 sm:pt-0">
+                    <span className="xl:hidden text-[9px] font-black text-slate-300 uppercase tracking-widest">PILIH ATLET</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAthleteToDelete(a);
+                        }}
+                        className="p-2.5 text-slate-400 hover:text-upi-red hover:bg-red-50 rounded-xl transition-all"
+                        title="Hapus Data Atlet"
+                      >
+                        <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </button>
+                      <ChevronRight className="text-slate-200 group-hover:text-upi-red transition-colors" />
+                    </div>
+                  </div>
                 </motion.div>
               ))}
               {athletes.length === 0 && (
@@ -436,6 +473,48 @@ export const AthleteData: React.FC<AthleteDataProps> = ({ onNext, savedData, ath
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* Confirmation Dialog */}
+      {athleteToDelete && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <motion.div 
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-3xl p-8 max-w-md w-full border border-slate-100 shadow-2xl space-y-6"
+          >
+            <div className="text-center space-y-3">
+              <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto text-upi-red border border-red-100 mb-2">
+                <Trash2 className="w-8 h-8" />
+              </div>
+              <h3 className="text-2xl font-display font-black text-slate-900 uppercase tracking-tight">HAPUS DATA ATLET</h3>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                Apakah Anda yakin ingin menghapus data atlet <span className="font-extrabold text-slate-900">{athleteToDelete.name}</span>? 
+                Seluruh data profil dan riwayat hasil tes akan dihapus secara permanen dari database.
+              </p>
+            </div>
+            <div className="flex gap-4">
+              <button
+                disabled={isDeleting}
+                onClick={() => setAthleteToDelete(null)}
+                className="flex-1 secondary-button !py-4 text-center cursor-pointer disabled:opacity-50"
+              >
+                BATAL
+              </button>
+              <button
+                disabled={isDeleting}
+                onClick={() => handleDeleteAthlete(athleteToDelete)}
+                className="flex-1 bg-gradient-to-r from-upi-red to-red-600 text-white font-black py-4 px-6 rounded-2xl flex items-center justify-center gap-2 hover:opacity-95 text-xs tracking-wider uppercase cursor-pointer transition-all disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  "YA, HAPUS PERMANEN"
+                )}
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
     </div>

@@ -271,13 +271,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport })
       )}
 
       {/* Hero Section */}
-      <section className="premium-card p-10 flex flex-col md:flex-row items-center gap-10 bg-gradient-to-br from-upi-red to-red-900 border-none text-white relative overflow-hidden">
+      <section className="premium-card p-6 sm:p-10 flex flex-col md:flex-row items-center gap-6 sm:gap-10 bg-gradient-to-br from-upi-red to-red-900 border-none text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full translate-x-1/4 -translate-y-1/4 blur-3xl pointer-events-none"></div>
-        <div className="relative z-10 flex-grow space-y-6">
-          <div className="inline-block px-4 py-1.5 bg-upi-gold text-upi-red rounded-full text-[10px] font-black uppercase tracking-[0.2em]">
+        <div className="relative z-10 flex-grow space-y-4 sm:space-y-6">
+          <div className="inline-block px-4 py-1.5 bg-upi-gold text-upi-red rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em]">
             {isAthlete ? "Athlete Personal Monitoring Hub" : "Biomechanics Analysis System"}
           </div>
-          <h1 className="text-4xl md:text-6xl font-display font-black tracking-tight leading-none uppercase">
+          <h1 className="text-2xl sm:text-4xl md:text-6xl font-display font-black tracking-tight leading-none uppercase">
             {isAthlete ? (
               <>
                 SELAMAT DATANG, <br />
@@ -290,7 +290,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport })
               </>
             )}
           </h1>
-          <p className="text-lg text-red-100 max-w-xl font-light">
+          <p className="text-sm sm:text-lg text-red-100 max-w-xl font-light">
             {isAthlete 
               ? `Dashboard personal untuk memantau pemulihan biomekanika tendangan depan pencak silat pasca cedera ${profile?.injury_type || '-'} pada ${profile?.body_part || '-'}.`
               : "Sistem analisis biomekanika tendangan depan pencak silat untuk monitoring akurasi dan kecepatan atlet secara presisi berbasis Artificial Intelligence."
@@ -336,7 +336,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport })
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Progress Chart */}
-        <div className="lg:col-span-8 premium-card p-8 flex flex-col justify-between">
+        <div className="lg:col-span-8 premium-card p-4 sm:p-6 md:p-8 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-2xl font-display font-black text-slate-900 uppercase tracking-tight">
@@ -379,7 +379,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport })
         {/* Categories or Profile Detail */}
         <div className="lg:col-span-4 space-y-8">
           {isAthlete && profile ? (
-            <div className="premium-card p-8 bg-gradient-to-b from-white to-slate-50 border-slate-200 shadow-sm relative overflow-hidden">
+            <div className="premium-card p-5 sm:p-8 bg-gradient-to-b from-white to-slate-50 border-slate-200 shadow-sm relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4">
                 <Heart className="w-6 h-6 text-upi-red/20" />
               </div>
@@ -409,16 +409,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport })
 
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 text-sm font-bold">
-                    <Clock className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Target Pemulihan</p>
-                    <p className="text-base font-black text-slate-800 uppercase">{profile.recovery_time ? `${profile.recovery_time} Minggu` : "-"}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 text-sm font-bold">
                     <Calendar className="w-5 h-5" />
                   </div>
                   <div>
@@ -432,7 +422,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport })
             </div>
           ) : null}
 
-          <div className="premium-card p-8">
+          <div className="premium-card p-5 sm:p-8">
             <h3 className="text-2xl font-display font-black text-slate-900 uppercase mb-8 tracking-tight">Kategori Performa</h3>
             <div className="space-y-6">
               {stats.performanceDist.length > 0 ? stats.performanceDist.map((item, i) => (
@@ -456,7 +446,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport })
       </div>
 
       {/* Recent Tests Table & Report Access */}
-      <div className="premium-card p-8">
+      <div className="premium-card p-4 sm:p-6 md:p-8">
         <h3 className="text-2xl font-display font-black text-slate-900 uppercase mb-6 tracking-tight">
           {isAthlete ? "RIWAYAT HASIL TES ANDA" : "RIWAYAT HASIL TES TERBARU ATLET"}
         </h3>
@@ -532,16 +522,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport })
 const StatCard = ({ icon, label, value, sub, color = "text-upi-red" }: any) => (
   <motion.div 
     whileHover={{ y: -5 }}
-    className="premium-card p-8 group relative overflow-hidden"
+    className="premium-card p-5 sm:p-8 group relative overflow-hidden"
   >
     <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:scale-125 transition-transform duration-500">
       {icon}
     </div>
-    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:rotate-12 transition-transform ${color === 'text-grass' ? 'bg-grass text-white' : color === 'text-upi-gold' ? 'bg-upi-gold text-upi-red' : 'bg-upi-red text-white'}`}>
-      {icon}
+    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 shadow-lg group-hover:rotate-12 transition-transform ${color === 'text-grass' ? 'bg-grass text-white' : color === 'text-upi-gold' ? 'bg-upi-gold text-upi-red' : 'bg-upi-red text-white'}`}>
+      {React.cloneElement(icon as React.ReactElement, { className: "w-5 h-5 sm:w-6 sm:h-6" })}
     </div>
-    <p className="section-label">{label}</p>
-    <h4 className="text-4xl font-display font-black text-slate-900 group-hover:text-upi-red transition-colors">{value}</h4>
-    <p className="text-xs text-slate-400 font-medium mt-2 uppercase tracking-widest">{sub}</p>
+    <p className="section-label mb-2">{label}</p>
+    <h4 className="text-2xl sm:text-4xl font-display font-black text-slate-900 group-hover:text-upi-red transition-colors">{value}</h4>
+    <p className="text-[10px] text-slate-400 font-bold mt-1.5 uppercase tracking-widest leading-none truncate">{sub}</p>
   </motion.div>
 );
