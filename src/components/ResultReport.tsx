@@ -574,18 +574,14 @@ export const ResultReport: React.FC<ResultReportProps> = ({ testId, athleteData,
             {/* 1. Academic Header Block */}
             <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3">
               <div className="flex items-center gap-3">
-                {/* Custom Inline Sharp Cross-CORS-Safe Vector UPI-Like Crest */}
-                <svg width="56" height="56" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="50" cy="50" r="46" stroke="#990000" strokeWidth="4" fill="#fafafa" />
-                  <circle cx="50" cy="50" r="40" stroke="#FFD700" strokeWidth="2.5" fill="#fafafa" />
-                  <path d="M50 22 L44 54 L56 54 Z" fill="#990000" />
-                  <path d="M42 54 H58 V61 H42 Z" fill="#1e293b" />
-                  <path d="M50 11 C55 17, 51 22, 47 22 C45 20, 43 17, 50 11 Z" fill="#fc1505" />
-                  <path d="M52 13 C55 17, 53 20, 50 20 C49 18, 48 16, 52 13 Z" fill="#FFD700" />
-                  <path d="M28 66 Q22 42 38 32 M72 66 Q78 42 62 32" stroke="#1e293b" strokeWidth="2" strokeLinecap="round" fill="none" />
-                  <path d="M33 66 H67 V73 H33 Z" fill="#1e293b" />
-                  <text x="50" y="87" textAnchor="middle" fill="#1e293b" fontSize="13" fontWeight="900" fontFamily="sans-serif">UPI</text>
-                </svg>
+                <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center overflow-hidden border border-slate-100 shrink-0">
+                  <img 
+                    src="https://lh3.googleusercontent.com/d/150kr_WKX4Ha1bV6x8hnAJhB7X02PZKhk" 
+                    alt="UPI Logo" 
+                    className="w-12 h-12 object-contain"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
                 <div>
                   <h1 className="text-sm font-display font-black uppercase text-slate-900 leading-tight tracking-wider">
                     UNIVERSITAS PENDIDIKAN INDONESIA
@@ -603,7 +599,7 @@ export const ResultReport: React.FC<ResultReportProps> = ({ testId, athleteData,
                   OFFICIAL REPORT
                 </span>
                 <p className="text-[11px] font-black text-slate-900 tracking-tight leading-none uppercase">
-                  TAEKWONDO KICK ANALYTICS
+                  PENCAK SILAT KICK ANALYTICS
                 </p>
                 <p className="text-[9px] font-mono text-slate-500 uppercase">
                   ID: #KCK-{testId} | SECURE_LOG

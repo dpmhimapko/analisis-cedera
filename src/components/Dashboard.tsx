@@ -293,7 +293,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ athleteId, onViewReport })
           <p className="text-sm sm:text-lg text-red-100 max-w-xl font-light">
             {isAthlete 
               ? `Dashboard personal untuk memantau pemulihan biomekanika tendangan depan pencak silat pasca cedera ${profile?.injury_type || '-'} pada ${profile?.body_part || '-'}.`
-              : "Sistem analisis biomekanika tendangan depan pencak silat untuk monitoring akurasi dan kecepatan atlet secara presisi berbasis Artificial Intelligence."
+              : "Sistem analisis biomekanika tendangan depan pencak silat untuk monitoring akurasi dan kecepatan atlet secara presisi berbasis Teknologi Computer Vision & Analisis Kinematika Gerak."
             }
           </p>
         </div>
